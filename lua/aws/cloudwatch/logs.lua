@@ -42,7 +42,7 @@ local function fetch(group_name, stream_name, buf, call_opts)
     local sep = string.rep("-", 100)
     local out = {
       sep,
-      "r refresh  |  q / <Esc> close",
+      "r refresh",
       sep,
       "",
       "Log Events  >>  " .. group_name .. "  /  " .. stream_name,

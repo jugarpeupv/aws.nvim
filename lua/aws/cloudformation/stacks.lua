@@ -44,7 +44,6 @@ local function hint_line()
   if km.filter       then table.insert(hints, km.filter       .. " filter")  end
   if km.clear_filter then table.insert(hints, km.clear_filter .. " clear")   end
   if km.refresh      then table.insert(hints, km.refresh      .. " refresh") end
-  if km.close        then table.insert(hints, km.close        .. " close")   end
   return table.concat(hints, "  |  ")
 end
 

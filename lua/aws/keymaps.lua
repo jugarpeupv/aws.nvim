@@ -45,9 +45,6 @@ function M.apply_cloudformation(buf, actions)
   map(buf, km.filter,       actions.filter,        "filter stacks")
   map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
   map(buf, km.refresh,      actions.refresh,       "refresh stacks")
-  map(buf, km.close,        actions.close,         "close window")
-  -- <Esc> always closes regardless of user config
-  map(buf, "<Esc>",         actions.close,         "close window")
   -- Visual-mode delete
   vmap(buf, km.delete, actions.delete_visual, "delete selected stacks")
 end
@@ -59,8 +56,6 @@ function M.apply_cloudformation_events(buf, actions)
   local km = require("aws.config").values.keymaps.cloudformation
 
   map(buf, km.refresh, actions.refresh, "refresh events")
-  map(buf, km.close,   actions.close,   "close window")
-  map(buf, "<Esc>",    actions.close,   "close window")
 end
 
 --- Apply S3 buckets-buffer keymaps.
@@ -74,8 +69,6 @@ function M.apply_s3(buf, actions)
   map(buf, km.filter,       actions.filter,        "filter buckets")
   map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
   map(buf, km.refresh,      actions.refresh,       "refresh buckets")
-  map(buf, km.close,        actions.close,         "close window")
-  map(buf, "<Esc>",         actions.close,         "close window")
   -- Visual-mode delete
   vmap(buf, km.delete, actions.delete_visual, "delete selected buckets")
 end
@@ -91,8 +84,6 @@ function M.apply_cloudwatch(buf, actions)
   map(buf, km.filter,       actions.filter,        "filter log groups")
   map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
   map(buf, km.refresh,      actions.refresh,       "refresh log groups")
-  map(buf, km.close,        actions.close,         "close window")
-  map(buf, "<Esc>",         actions.close,         "close window")
   -- Visual-mode delete
   vmap(buf, km.delete, actions.delete_visual, "delete selected log groups")
 end
@@ -105,8 +96,6 @@ function M.apply_cloudwatch_streams(buf, actions)
 
   map(buf, km.open_logs, actions.open_logs, "open log events")
   map(buf, km.refresh,   actions.refresh,   "refresh streams")
-  map(buf, km.close,     actions.close,     "close window")
-  map(buf, "<Esc>",      actions.close,     "close window")
 end
 
 --- Apply CloudWatch log events-buffer keymaps.
@@ -116,8 +105,6 @@ function M.apply_cloudwatch_logs(buf, actions)
   local km = require("aws.config").values.keymaps.cloudwatch
 
   map(buf, km.refresh, actions.refresh, "refresh log events")
-  map(buf, km.close,   actions.close,   "close window")
-  map(buf, "<Esc>",    actions.close,   "close window")
 end
 
 return M

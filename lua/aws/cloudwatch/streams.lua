@@ -30,7 +30,6 @@ local function hint_line()
   local hints = {}
   if km.open_logs then table.insert(hints, km.open_logs .. " open logs") end
   if km.refresh   then table.insert(hints, km.refresh   .. " refresh")   end
-  if km.close     then table.insert(hints, km.close     .. " close")     end
   return table.concat(hints, "  |  ")
 end
 

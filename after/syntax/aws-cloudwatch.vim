@@ -24,7 +24,7 @@ syntax match AwsCwColHeader /^Time (UTC).*/
 syntax match AwsCwPath      /^\/[^ ]*/
 
 " ── Retention column (e.g. 30d / never) ─────────────────────────────────────
-syntax match AwsCwRetention /\d\+d/
+syntax match AwsCwRetention /\<\d\+d\>/
 syntax match AwsCwNever     /\<never\>/
 
 " ── Stored bytes column ──────────────────────────────────────────────────────
