@@ -1,0 +1,317 @@
+*aws-nvim.txt*  Neovim plugin for interacting with AWS from the editor.
+                                                *aws-nvim*
+
+==============================================================================
+CONTENTS                                                        *aws-nvim-toc*
+
+  1. Introduction .............. |aws-nvim-intro|
+  2. Requirements .............. |aws-nvim-requirements|
+  3. Installation .............. |aws-nvim-installation|
+  4. Configuration ............. |aws-nvim-configuration|
+  5. Per-command flags ......... |aws-nvim-flags|
+  6. CloudFormation ............ |aws-nvim-cloudformation|
+  7. S3 ....................... |aws-nvim-s3|
+  8. CloudWatch ................ |aws-nvim-cloudwatch|
+  9. Architecture .............. |aws-nvim-architecture|
+
+==============================================================================
+1. INTRODUCTION                                               *aws-nvim-intro*
+
+aws.nvim lets you interact with AWS without leaving Neovim. AWS CLI output is
+placed into regular Neovim buffers inside splits, so all built-in motions,
+search, and keymaps work out of the box.
+
+All CLI calls are asynchronous (|vim.loop| / libuv); the editor never blocks
+while waiting for AWS responses.
+
+==============================================================================
+2. REQUIREMENTS                                        *aws-nvim-requirements*
+
+  - Neovim >= 0.9
+  - AWS CLI v2 (recommended)
+
+Authentication is entirely delegated to the user. The plugin assumes the `aws`
+binary is on $PATH and that credentials are already configured (environment
+variables, ~/.aws/credentials, SSO, IAM role, etc.).
+
+If a CLI call fails the raw stderr output is shown verbatim in the buffer.
+
+==============================================================================
+3. INSTALLATION                                        *aws-nvim-installation*
+
+lazy.nvim ~
+>lua
+    {
+      "you/aws.nvim",
+      config = function()
+        require("aws").setup()
+      end,
+    }
+<
+
+packer.nvim ~
+>lua
+    use {
+      "you/aws.nvim",
+      config = function()
+        require("aws").setup()
+      end,
+    }
+<
+
+After installation, run the following to generate the help tags: >
+
+    :helptags ALL
+<
+
+==============================================================================
+4. CONFIGURATION                                      *aws-nvim-configuration*
+
+All options are optional. Call `setup()` with any overrides: >lua
+
+    require("aws").setup({
+      -- Default AWS CLI environment overrides applied to every command.
+      -- Authentication must already be handled by your environment.
+      default_aws_profile = nil,  -- sets AWS_PROFILE for every CLI call
+      default_aws_region  = nil,  -- sets AWS_DEFAULT_REGION for every CLI call
+
+      -- Status icons shown in the CloudFormation stacks buffer.
+      -- Requires a Nerd Font; replace with ASCII strings if needed.
+      icons = {
+        stack       = "󰆼 ",
+        complete    = "󰱑 ",
+        failed      = "󰱞 ",
+        in_progress = "󰔟 ",
+        deleted     = "󰩺 ",
+      },
+
+      -- Buffer-local keymaps for each service.
+      -- Set any key to false to disable it entirely.
+      keymaps = {
+        cloudformation = {
+          open_events  = "<CR>",  -- open events for stack under cursor
+          delete       = "dd",    -- delete stack under cursor
+          filter       = "F",     -- prompt to filter stacks by name
+          clear_filter = "C",     -- clear active filter
+          refresh      = "R",     -- re-fetch stacks from AWS
+        },
+        s3 = {
+          empty        = "de",    -- empty bucket under cursor (recursive rm)
+          delete       = "dd",    -- delete bucket under cursor (must be empty)
+          filter       = "F",     -- prompt to filter buckets by name
+          clear_filter = "C",     -- clear active filter
+          refresh      = "R",     -- re-fetch buckets from AWS
+        },
+        cloudwatch = {
+          open_streams = "<CR>",  -- open log streams for group under cursor
+          open_logs    = "<CR>",  -- open log events for stream under cursor
+          delete       = "dd",    -- delete log group under cursor
+          filter       = "F",     -- prompt to filter log groups by name
+          clear_filter = "C",     -- clear active filter
+          refresh      = "R",     -- re-fetch from AWS
+        },
+      },
+    })
+<
+
+------------------------------------------------------------------------------
+                                                   *aws-nvim-default-profile*
+`default_aws_profile`
+    Sets the `AWS_PROFILE` environment variable for every CLI call made by the
+    plugin. Equivalent to passing `--profile` to every command.
+    Default: `nil` (uses the environment as-is).
+
+                                                    *aws-nvim-default-region*
+`default_aws_region`
+    Sets the `AWS_DEFAULT_REGION` environment variable for every CLI call.
+    Equivalent to passing `--region` to every command.
+    Default: `nil` (uses the environment as-is).
+
+                                                          *aws-nvim-keymaps*
+`keymaps`
+    Table of buffer-local keymaps organised by service. Each value is a key
+    string accepted by |vim.keymap.set()|, or `false` to disable the binding
+    entirely.
+
+    See |aws-nvim-cloudformation-keys|, |aws-nvim-s3-keys|, and
+    |aws-nvim-cloudwatch-groups-keys| for per-service defaults.
+
+==============================================================================
+5. PER-COMMAND FLAGS                                         *aws-nvim-flags*
+
+Every `:Aws*` command accepts optional `--region` and `--profile` flags that
+override |aws-nvim-default-region| / |aws-nvim-default-profile| for that
+single invocation. The flags can appear anywhere in the argument list. >
+
+    :AwsCF list --region us-east-1
+    :AwsCF list --profile prod --region eu-west-1
+    :AwsS3 --region ap-southeast-1
+    :AwsCW list --profile staging
+<
+
+Tab-completion is available for both flags and sub-commands.
+
+==============================================================================
+6. CLOUDFORMATION                              *aws-cf* *aws-nvim-cloudformation*
+
+------------------------------------------------------------------------------
+Commands                                         *aws-nvim-cloudformation-cmd*
+
+                                                                   *:AwsCF*
+:AwsCF list [--region {r}] [--profile {p}]
+    Open the CloudFormation stacks list buffer.
+
+:AwsCF events {name} [--region {r}] [--profile {p}]
+    Open the events buffer for the named stack.
+
+:AwsCF delete {name} [--region {r}] [--profile {p}]
+    Delete the named stack (asks for confirmation).
+
+------------------------------------------------------------------------------
+Stacks buffer                                   *aws-nvim-cloudformation-keys*
+    filetype: `aws-cloudformation`
+
+    Key   Action ~
+    <CR>  Open the events buffer for the stack under cursor.
+    dd    Delete the stack under cursor (asks for confirmation).
+    F     Prompt to filter the list by stack name.
+    C     Clear the active filter.
+    R     Re-fetch stacks from AWS.
+
+    All keys are configurable via |aws-nvim-keymaps|.
+    Standard Neovim motions (gg, G, /{pattern}, n, N, yank, …) work because
+    output lives in a normal `nofile` buffer.
+
+------------------------------------------------------------------------------
+Events buffer                                 *aws-nvim-cloudformation-events*
+    filetype: `aws-cloudformation`
+
+    Key   Action ~
+    R     Re-fetch events from AWS.
+
+    Standard Neovim motions apply (see above).
+
+==============================================================================
+7. S3                                                    *aws-s3* *aws-nvim-s3*
+
+------------------------------------------------------------------------------
+Commands                                                    *aws-nvim-s3-cmd*
+
+                                                                   *:AwsS3*
+:AwsS3 [list] [--region {r}] [--profile {p}]
+    Open the S3 buckets list buffer. `list` is the default sub-command and
+    may be omitted.
+
+:AwsS3 empty {name} [--region {r}] [--profile {p}]
+    Delete all objects in the named bucket (asks for confirmation).
+
+:AwsS3 delete {name} [--region {r}] [--profile {p}]
+    Delete the named bucket (asks for confirmation; bucket must be empty).
+
+------------------------------------------------------------------------------
+Buckets buffer                                              *aws-nvim-s3-keys*
+    filetype: `aws-s3`
+
+    Key   Action ~
+    de    Empty the bucket under cursor (asks for confirmation).
+    dd    Delete the bucket under cursor (asks for confirmation; must be empty).
+    F     Prompt to filter the list by bucket name.
+    C     Clear the active filter.
+    R     Re-fetch buckets from AWS.
+
+    All keys are configurable via |aws-nvim-keymaps|.
+
+    Bucket regions are not shown in the list view to keep loading instant.
+    `list-buckets` returns in a single fast call; no per-bucket API calls are
+    made.
+
+==============================================================================
+8. CLOUDWATCH                                    *aws-cw* *aws-nvim-cloudwatch*
+
+------------------------------------------------------------------------------
+Commands                                               *aws-nvim-cloudwatch-cmd*
+
+                                                                   *:AwsCW*
+:AwsCW [list] [--region {r}] [--profile {p}]
+    Open the CloudWatch log groups list buffer. `list` is the default
+    sub-command and may be omitted.
+
+:AwsCW streams {group} [--region {r}] [--profile {p}]
+    Open the log streams buffer for the named log group.
+
+:AwsCW logs {group} {stream} [--region {r}] [--profile {p}]
+    Open the log events buffer for the named stream.
+
+:AwsCW delete {group} [--region {r}] [--profile {p}]
+    Delete the named log group (asks for confirmation).
+
+------------------------------------------------------------------------------
+Log groups buffer                             *aws-nvim-cloudwatch-groups-keys*
+    filetype: `aws-cloudwatch`
+
+    Key   Action ~
+    <CR>  Open the log streams buffer for the group under cursor.
+    dd    Delete the log group under cursor (asks for confirmation).
+    F     Prompt to filter the list by group name.
+    C     Clear the active filter.
+    R     Re-fetch log groups from AWS.
+
+    All keys are configurable via |aws-nvim-keymaps|.
+
+    The list shows each group's retention policy and stored data size. All
+    pages are fetched automatically via nextToken pagination and rendered
+    incrementally.
+
+------------------------------------------------------------------------------
+Log streams buffer                          *aws-nvim-cloudwatch-streams-keys*
+    filetype: `aws-cloudwatch`
+
+    Key   Action ~
+    <CR>  Open the log events buffer for the stream under cursor.
+    R     Re-fetch streams from AWS.
+
+    Opens in a vertical split alongside the log groups buffer. Streams are
+    sorted by last event time (most recent first).
+
+------------------------------------------------------------------------------
+Log events buffer                             *aws-nvim-cloudwatch-logs-keys*
+    filetype: `aws-cloudwatch`
+
+    Key   Action ~
+    R     Re-fetch log events from AWS.
+
+    Opens in a vertical split. Each event is prefixed with its UTC timestamp.
+    Multi-line messages are indented for readability.
+
+==============================================================================
+9. ARCHITECTURE                                        *aws-nvim-architecture*
+
+>
+    aws.nvim/
+    ├── plugin/aws.lua           Entry point – registers :Aws* commands
+    └── lua/aws/
+        ├── init.lua             Public API + setup()
+        ├── config.lua           Defaults and user-config merge
+        ├── spawn.lua            Async aws CLI runner (vim.loop / libuv)
+        ├── buffer.lua           Buffer creation and split helpers
+        ├── keymaps.lua          Configurable buffer-local keymap applier
+        ├── cloudformation/
+        │   ├── init.lua         CloudFormation public surface
+        │   ├── stacks.lua       List, filter, and render stacks
+        │   ├── events.lua       Stack events viewer
+        │   └── delete.lua       Async stack deletion with confirmation
+        ├── s3/
+        │   ├── init.lua         S3 public surface
+        │   ├── buckets.lua      List, filter, and render buckets
+        │   ├── empty.lua        Async bucket empty with confirmation
+        │   └── delete.lua       Async bucket deletion with confirmation
+        └── cloudwatch/
+            ├── init.lua         CloudWatch public surface
+            ├── groups.lua       List, filter, and render log groups (paginated)
+            ├── streams.lua      Log streams viewer (vertical split)
+            ├── logs.lua         Log events viewer (vertical split)
+            └── delete.lua       Async log group deletion with confirmation
+<
+
+==============================================================================
+vim: ft=help tw=78 et

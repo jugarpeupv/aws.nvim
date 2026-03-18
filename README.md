@@ -54,11 +54,11 @@ require("aws").setup({
 
   -- Status icons (requires a Nerd Font; replace with ASCII if needed)
   icons = {
-    stack       = " ",
-    complete    = " ",
-    failed      = " ",
-    in_progress = " ",
-    deleted     = " ",
+      stack       = "󰆼 ",
+      complete    = "󰱑 ",
+      failed      = "󰱞 ",
+      in_progress = "󰔟 ",
+      deleted     = "󰩺 ",
   },
 
   -- Buffer-local keymaps for each service.
@@ -68,26 +68,23 @@ require("aws").setup({
       open_events  = "<CR>",   -- open events for stack under cursor
       delete       = "dd",     -- delete stack under cursor
       filter       = "F",      -- prompt to filter stacks by name
-      clear_filter = "<C-l>",  -- clear active filter
-      refresh      = "r",      -- re-fetch stacks from AWS
-      close        = "q",      -- close the split window
+      clear_filter = "C",      -- clear active filter
+      refresh      = "R",      -- re-fetch stacks from AWS
     },
     s3 = {
       empty        = "de",     -- empty bucket under cursor (recursive rm)
       delete       = "dd",     -- delete bucket under cursor (must be empty first)
       filter       = "F",      -- prompt to filter buckets by name
-      clear_filter = "<C-l>",  -- clear active filter
-      refresh      = "r",      -- re-fetch buckets from AWS
-      close        = "q",      -- close the split window
+      clear_filter = "C",      -- clear active filter
+      refresh      = "R",      -- re-fetch buckets from AWS
     },
     cloudwatch = {
       open_streams = "<CR>",   -- open log streams for group under cursor
       open_logs    = "<CR>",   -- open log events for stream under cursor
       delete       = "dd",     -- delete log group under cursor
       filter       = "F",      -- prompt to filter log groups by name
-      clear_filter = "<C-l>",  -- clear active filter
-      refresh      = "r",      -- re-fetch from AWS
-      close        = "q",      -- close the window
+      clear_filter = "C",      -- clear active filter
+      refresh      = "R",      -- re-fetch from AWS
     },
   },
 })
@@ -129,9 +126,8 @@ Tab-completion is available for both flags and sub-commands.
 | `<CR>` | Open events for the stack under cursor |
 | `dd` | Delete the stack under cursor (asks for confirmation) |
 | `F` | Filter stacks by name |
-| `<C-l>` | Clear active filter |
-| `r` | Refresh the list |
-| `q` / `<Esc>` | Close the split |
+| `C` | Clear active filter |
+| `R` | Refresh the list |
 
 All keys are configurable via `setup()` (see above).
 
@@ -139,8 +135,7 @@ All keys are configurable via `setup()` (see above).
 
 | Default key | Action |
 |---|---|
-| `r` | Refresh events |
-| `q` / `<Esc>` | Close the split |
+| `R` | Refresh events |
 
 Standard Neovim motions (`gg`, `G`, `/{pattern}`, `n`, `N`, yank, …) work
 because output lives in a normal `nofile` buffer.
@@ -166,9 +161,8 @@ because output lives in a normal `nofile` buffer.
 | `de` | Empty the bucket under cursor (asks for confirmation) |
 | `dd` | Delete the bucket under cursor (asks for confirmation; bucket must be empty) |
 | `F` | Filter buckets by name |
-| `<C-l>` | Clear active filter |
-| `r` | Refresh the list |
-| `q` / `<Esc>` | Close the split |
+| `C` | Clear active filter |
+| `R` | Refresh the list |
 
 All keys are configurable via `setup()` (see above).
 
@@ -197,9 +191,8 @@ Bucket regions are not shown in the list view to keep loading instant.
 | `<CR>` | Open log streams for the group under cursor |
 | `dd` | Delete the log group under cursor (asks for confirmation) |
 | `F` | Filter log groups by name |
-| `<C-l>` | Clear active filter |
-| `r` | Refresh the list |
-| `q` / `<Esc>` | Close the split |
+| `C` | Clear active filter |
+| `R` | Refresh the list |
 
 The list shows each group's retention policy and stored data size. All pages are
 fetched automatically via `nextToken` pagination and rendered incrementally.
@@ -209,8 +202,7 @@ fetched automatically via `nextToken` pagination and rendered incrementally.
 | Default key | Action |
 |---|---|
 | `<CR>` | Open log events for the stream under cursor |
-| `r` | Refresh the list |
-| `q` / `<Esc>` | Close the split |
+| `R` | Refresh the list |
 
 Opens in a vertical split alongside the log groups buffer. Streams are sorted by
 last event time (most recent first).
@@ -219,8 +211,7 @@ last event time (most recent first).
 
 | Default key | Action |
 |---|---|
-| `r` | Refresh events |
-| `q` / `<Esc>` | Close the split |
+| `R` | Refresh events |
 
 Opens in a vertical split. Each event is prefixed with its UTC timestamp.
 Multi-line messages are indented for readability.

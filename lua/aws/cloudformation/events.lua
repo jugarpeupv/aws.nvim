@@ -64,7 +64,7 @@ local function fetch(stack_name, buf, call_opts)
 
     table.insert(out, "")
     table.insert(out, sep)
-    table.insert(out, "  r refresh")
+    table.insert(out, "  R refresh")
 
     buf_mod.set_lines(buf, out)
   end, call_opts)
