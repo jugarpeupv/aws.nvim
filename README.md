@@ -1,8 +1,27 @@
 # aws.nvim
 
-A Neovim plugin for interacting with AWS from the editor.
-AWS CLI output is placed into regular Neovim buffers inside horizontal splits,
-so all built-in motions, search, and keymaps work out of the box.
+Manage AWS resources without leaving your editor. aws.nvim brings
+CloudFormation stacks, S3 buckets, and CloudWatch log groups directly into
+Neovim buffers — letting you browse, filter, delete, and tail logs using the
+same motions and keybindings you already know.
+
+All AWS CLI calls run asynchronously, so the editor never blocks. Output lands
+in standard `nofile` buffers, which means `/` search, `gg`/`G`, yank, and
+every other built-in motion work out of the box.
+
+## Screenshots
+
+### CloudFormation
+
+![CloudFormation stacks buffer](media/aws_cloudformation.png)
+
+### S3
+
+![S3 buckets buffer](media/aws_s3.png)
+
+### CloudWatch
+
+![CloudWatch log groups buffer](media/aws_cloudwatch.png)
 
 ## Requirements
 
