@@ -1,0 +1,121 @@
+--- aws.nvim – configuration and defaults
+local M = {}
+
+---@class AwsKeymapsCF
+--- Keymaps active inside the CloudFormation stacks buffer.
+--- Set any key to false to disable it.
+---@field open_events  string|false  open events for stack under cursor
+---@field delete       string|false  delete stack under cursor
+---@field filter       string|false  prompt to filter stacks by name
+---@field clear_filter string|false  clear active filter
+---@field refresh      string|false  re-fetch stacks from AWS
+---@field close        string|false  close the split window
+
+---@class AwsKeymapsS3
+--- Keymaps active inside the S3 buckets buffer.
+--- Set any key to false to disable it.
+---@field empty        string|false  empty bucket under cursor
+---@field delete       string|false  empty + delete bucket under cursor
+---@field filter       string|false  prompt to filter buckets by name
+---@field clear_filter string|false  clear active filter
+---@field refresh      string|false  re-fetch buckets from AWS
+---@field close        string|false  close the split window
+
+---@class AwsKeymapsCW
+--- Keymaps active inside CloudWatch buffers.
+--- Set any key to false to disable it.
+---@field open_streams string|false  open log streams for group under cursor
+---@field open_logs    string|false  open log events for stream under cursor
+---@field delete       string|false  delete log group under cursor
+---@field filter       string|false  prompt to filter by name
+---@field clear_filter string|false  clear active filter
+---@field refresh      string|false  re-fetch from AWS
+---@field close        string|false  close the window
+
+---@class AwsKeymaps
+---@field cloudformation AwsKeymapsCF
+---@field s3             AwsKeymapsS3
+---@field cloudwatch     AwsKeymapsCW
+
+---@class AwsIcons
+---@field stack       string
+---@field complete    string
+---@field failed      string
+---@field in_progress string
+---@field deleted     string
+
+---@class AwsConfig
+---@field default_aws_profile  string|nil  AWS_PROFILE default (nil = inherit environment)
+---@field default_aws_region   string|nil  AWS_DEFAULT_REGION default (nil = inherit environment)
+---@field icons    AwsIcons
+---@field keymaps  AwsKeymaps
+---@class AwsCallOpts
+--- Per-call overrides passed to individual commands (e.g. from :AwsCF --region eu-west-1).
+--- When set these take precedence over default_aws_profile / default_aws_region.
+---@field profile string|nil
+---@field region  string|nil
+
+local defaults = {
+  -- Auth is delegated to the user; these are optional convenience defaults.
+  default_aws_profile = nil,
+  default_aws_region  = nil,
+
+  icons = {
+    stack       = " ",
+    complete    = " ",
+    failed      = " ",
+    in_progress = " ",
+    deleted     = " ",
+  },
+
+  keymaps = {
+    cloudformation = {
+      open_events  = "<CR>",
+      delete       = "dd",
+      filter       = "F",
+      clear_filter = "C",
+      refresh      = "R",
+      close        = "q",
+    },
+    s3 = {
+      empty        = "de",
+      delete       = "dd",
+      filter       = "F",
+      clear_filter = "C",
+      refresh      = "R",
+      close        = "q",
+    },
+    cloudwatch = {
+      open_streams = "<CR>",
+      open_logs    = "<CR>",
+      delete       = "dd",
+      filter       = "F",
+      clear_filter = "C",
+      refresh      = "R",
+      close        = "q",
+    },
+  },
+}
+
+M.values = vim.deepcopy(defaults)
+
+--- Merge user options into the active config. Call once from setup().
+---@param opts AwsConfig|nil
+function M.setup(opts)
+  M.values = vim.tbl_deep_extend("force", defaults, opts or {})
+end
+
+--- Build a minimal env override table for spawn.lua.
+--- Per-call overrides take precedence over the config defaults.
+---@param call_opts AwsCallOpts|nil
+---@return table<string,string>
+function M.env_overrides(call_opts)
+  local env = {}
+  local profile = (call_opts and call_opts.profile) or M.values.default_aws_profile
+  local region  = (call_opts and call_opts.region)  or M.values.default_aws_region
+  if profile then env["AWS_PROFILE"]        = profile end
+  if region  then env["AWS_DEFAULT_REGION"] = region  end
+  return env
+end
+
+return M
