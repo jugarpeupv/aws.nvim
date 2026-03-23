@@ -201,6 +201,18 @@ end
 -- Public
 -------------------------------------------------------------------------------
 
+--- Register credentials for a bucket so the BufEnter autocmd can restore
+--- extra_s3_args whenever the user navigates back to that oil buffer.
+--- Called externally (e.g. from the CloudFormation resources buffer) when
+--- opening a bucket that wasn't discovered via the S3 buckets list.
+---@param bucket_name string
+---@param profile     string|nil
+---@param region      string|nil
+function M._register_bucket_creds(bucket_name, profile, region)
+  _bucket_creds[bucket_name] = { profile = profile, region = region }
+  ensure_oil_s3_autocmd()
+end
+
 ---@param call_opts AwsCallOpts|nil
 function M.open(call_opts)
   local buf = buf_mod.get_or_create(BUF_NAME, FILETYPE)

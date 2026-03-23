@@ -84,13 +84,15 @@ require("aws").setup({
   -- Set any key to false to disable it entirely.
   keymaps = {
     cloudformation = {
-      open_events  = "<CR>",   -- open events for stack under cursor
-      delete       = "dd",     -- delete stack under cursor
-      filter       = "F",      -- prompt to filter stacks by name
-      clear_filter = "C",      -- clear active filter
-      refresh      = "R",      -- re-fetch stacks from AWS
+      open_resources = "<CR>",   -- open resources for stack under cursor
+      open_events    = "E",      -- open events for stack under cursor
+      delete         = "dd",     -- delete stack under cursor
+      filter         = "F",      -- prompt to filter stacks by name
+      clear_filter   = "C",      -- clear active filter
+      refresh        = "R",      -- re-fetch stacks from AWS
     },
     s3 = {
+      open_bucket  = "<CR>",   -- open bucket in oil.nvim (oil-s3://)
       empty        = "de",     -- empty bucket under cursor (recursive rm)
       delete       = "dd",     -- delete bucket under cursor (must be empty first)
       filter       = "F",      -- prompt to filter buckets by name
@@ -142,13 +144,40 @@ Tab-completion is available for both flags and sub-commands.
 
 | Default key | Action |
 |---|---|
-| `<CR>` | Open events for the stack under cursor |
+| `<CR>` | Open resources for the stack under cursor |
+| `E` | Open events for the stack under cursor |
 | `dd` | Delete the stack under cursor (asks for confirmation) |
 | `F` | Filter stacks by name |
 | `C` | Clear active filter |
 | `R` | Refresh the list |
 
 All keys are configurable via `setup()` (see above).
+
+### Resources buffer (`filetype=aws-cloudformation`)
+
+Opened from the stacks buffer with `<CR>`. Fires two parallel AWS calls
+(`list-stack-resources` + `get-template`) and renders the full resource tree.
+
+**CDK stacks** are displayed as a hierarchical construct tree — folder nodes
+mirror your CDK construct hierarchy, and leaf lines show `logical_id`,
+`AWS::X::Y` type, physical id, and status side by side. Non-CDK stacks fall
+back to a flat list. The title shows a `(CDK)` badge when CDK metadata is
+detected.
+
+**Folds** are pre-computed from the construct hierarchy, so `zc`/`zo`/`za`
+collapse and expand entire CDK construct subtrees. The buffer opens fully
+expanded (`foldlevel=99`).
+
+**Highlights:** the `AWS::X::Y` type token uses the `AwsResourceType` highlight
+group (linked to `Type` by default). Logical IDs that have a known AWS Console
+URL are underlined via the `AwsResourceLink` highlight group.
+
+| Default key | Action |
+|---|---|
+| `<CR>` | Open resource — `AWS::S3::Bucket` opens the bucket in oil.nvim; `AWS::Logs::LogGroup` opens CloudWatch log streams |
+| `E` | Open events for this stack |
+| `gx` | Open the AWS Console page for the resource under cursor |
+| `R` | Refresh resources |
 
 ### Events buffer (`filetype=aws-cloudformation`)
 
@@ -177,6 +206,7 @@ because output lives in a normal `nofile` buffer.
 
 | Default key | Action |
 |---|---|
+| `<CR>` | Open the bucket under cursor in oil.nvim (`oil-s3://`) |
 | `de` | Empty the bucket under cursor (asks for confirmation) |
 | `dd` | Delete the bucket under cursor (asks for confirmation; bucket must be empty) |
 | `F` | Filter buckets by name |
@@ -253,6 +283,8 @@ aws.nvim/
     ├── cloudformation/
     │   ├── init.lua                # CloudFormation public surface
     │   ├── stacks.lua              # List, filter, and render stacks
+    │   ├── resources.lua           # CDK construct tree + resource list viewer
+    │   ├── console_url.lua         # AWS Console URL builder (28 resource types)
     │   ├── events.lua              # Stack events viewer
     │   └── delete.lua              # Async stack deletion with confirmation
     ├── s3/

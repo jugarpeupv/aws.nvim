@@ -4,12 +4,13 @@ local M = {}
 ---@class AwsKeymapsCF
 --- Keymaps active inside the CloudFormation stacks buffer.
 --- Set any key to false to disable it.
----@field open_events  string|false  open events for stack under cursor
----@field delete       string|false  delete stack under cursor
----@field filter       string|false  prompt to filter stacks by name
----@field clear_filter string|false  clear active filter
----@field refresh      string|false  re-fetch stacks from AWS
----@field close        string|false  close the split window
+---@field open_resources string|false  open resources for stack under cursor
+---@field open_events    string|false  open events for stack under cursor
+---@field delete         string|false  delete stack under cursor
+---@field filter         string|false  prompt to filter stacks by name
+---@field clear_filter   string|false  clear active filter
+---@field refresh        string|false  re-fetch stacks from AWS
+---@field close          string|false  close the split window
 
 ---@class AwsKeymapsS3
 --- Keymaps active inside the S3 buckets buffer.
@@ -71,12 +72,13 @@ local defaults = {
 
   keymaps = {
     cloudformation = {
-      open_events  = "<CR>",
-      delete       = "dd",
-      filter       = "F",
-      clear_filter = "C",
-      refresh      = "R",
-      close        = "q",
+      open_resources = "<CR>",
+      open_events    = "E",
+      delete         = "dd",
+      filter         = "F",
+      clear_filter   = "C",
+      refresh        = "R",
+      close          = "q",
     },
     s3 = {
       open_bucket  = "<CR>",

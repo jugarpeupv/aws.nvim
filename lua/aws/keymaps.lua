@@ -40,13 +40,24 @@ end
 function M.apply_cloudformation(buf, actions)
   local km = require("aws.config").values.keymaps.cloudformation
 
-  map(buf, km.open_events,  actions.open_events,  "open stack events")
-  map(buf, km.delete,       actions.delete,        "delete stack")
-  map(buf, km.filter,       actions.filter,        "filter stacks")
-  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
-  map(buf, km.refresh,      actions.refresh,       "refresh stacks")
+  map(buf, km.open_resources, actions.open_resources, "open stack resources")
+  map(buf, km.open_events,    actions.open_events,    "open stack events")
+  map(buf, km.delete,         actions.delete,          "delete stack")
+  map(buf, km.filter,         actions.filter,          "filter stacks")
+  map(buf, km.clear_filter,   actions.clear_filter,    "clear filter")
+  map(buf, km.refresh,        actions.refresh,         "refresh stacks")
   -- Visual-mode delete
   vmap(buf, km.delete, actions.delete_visual, "delete selected stacks")
+end
+
+--- Apply CloudFormation resources-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_cloudformation_resources(buf, actions)
+  local km = require("aws.config").values.keymaps.cloudformation
+
+  map(buf, km.refresh,     actions.refresh,     "refresh resources")
+  map(buf, km.open_events, actions.open_events,  "open stack events")
 end
 
 --- Apply CloudFormation events-buffer keymaps.

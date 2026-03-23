@@ -49,11 +49,12 @@ end
 local function hint_line()
   local km = config.values.keymaps.cloudformation
   local hints = {}
-  if km.open_events  then table.insert(hints, km.open_events  .. " events")  end
-  if km.delete       then table.insert(hints, km.delete       .. " delete")  end
-  if km.filter       then table.insert(hints, km.filter       .. " filter")  end
-  if km.clear_filter then table.insert(hints, km.clear_filter .. " clear")   end
-  if km.refresh      then table.insert(hints, km.refresh      .. " refresh") end
+  if km.open_resources then table.insert(hints, km.open_resources .. " resources") end
+  if km.open_events    then table.insert(hints, km.open_events    .. " events")    end
+  if km.delete         then table.insert(hints, km.delete         .. " delete")    end
+  if km.filter         then table.insert(hints, km.filter         .. " filter")    end
+  if km.clear_filter   then table.insert(hints, km.clear_filter   .. " clear")     end
+  if km.refresh        then table.insert(hints, km.refresh        .. " refresh")   end
   return table.concat(hints, "  |  ")
 end
 
@@ -272,6 +273,15 @@ function M.open(call_opts)
   end
 
   keymaps.apply_cloudformation(buf, {
+    open_resources = function()
+      local name = stack_under_cursor(st)
+      if not name then
+        vim.notify("aws.nvim: no stack under cursor", vim.log.levels.WARN)
+        return
+      end
+      require("aws.cloudformation.resources").open(name, call_opts)
+    end,
+
     open_events = function()
       local name = stack_under_cursor(st)
       if not name then
