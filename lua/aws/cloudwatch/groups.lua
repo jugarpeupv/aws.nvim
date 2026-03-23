@@ -6,15 +6,24 @@ local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
 local config  = require("aws.config")
 
-local BUF_NAME = "aws://cloudwatch/groups"
 local FILETYPE = "aws-cloudwatch"
 
-local _groups    = {}
-local _filter    = ""
-local _line_map  = {}
-local _cache     = nil   -- persists for the Neovim session; nil = not yet fetched
-local _fetching  = false -- true while pages are still being fetched
-local _fetch_gen = 0     -- incremented on every new fetch; stale callbacks check this
+---@class CwGroupsState
+---@field groups    table[]
+---@field filter    string
+---@field line_map  table<integer,string>
+---@field cache     table[]|nil   full unfiltered list; nil = not yet fetched
+---@field fetching  boolean       true while pages are still arriving
+---@field fetch_gen integer       incremented on every new fetch; stale cbs check this
+---@field region    string
+---@field profile   string|nil
+
+--- state keyed by identity string (e.g. "us-east-1" or "prod@eu-west-1")
+local _state = {}  -- identity -> CwGroupsState
+
+local function buf_name(identity)
+  return "aws://cloudwatch/groups/" .. identity
+end
 
 -------------------------------------------------------------------------------
 -- Helpers
@@ -67,19 +76,23 @@ local function make_header(col_width)
   }
 end
 
-local function render(buf)
+---@param buf integer
+---@param st  CwGroupsState
+local function render(buf, st)
   local col_width = 10
-  for _, g in ipairs(_groups) do
+  for _, g in ipairs(st.groups) do
     local name = g.logGroupName or ""
-    if _filter == "" or name:lower():find(_filter:lower(), 1, true) then
+    if st.filter == "" or name:lower():find(st.filter:lower(), 1, true) then
       if #name > col_width then col_width = #name end
     end
   end
-  col_width = col_width + 2   -- breathing room (no 99-char cap)
+  col_width = col_width + 2
 
   local title = "CloudWatch Log Groups"
-    .. (_fetching and "  [loading…]" or "")
-    .. (_filter ~= "" and ("   [server filter: " .. _filter .. "]") or "")
+    .. "   [region: " .. st.region .. "]"
+    .. (st.profile and ("   [profile: " .. st.profile .. "]") or "")
+    .. (st.fetching and "  [loading…]" or "")
+    .. (st.filter ~= "" and ("   [server filter: " .. st.filter .. "]") or "")
 
   local header = make_header(col_width)
   local lines = { "", title, "" }
@@ -87,20 +100,20 @@ local function render(buf)
     table.insert(lines, h)
   end
 
-  _line_map = {}
+  st.line_map = {}
 
-  for _, g in ipairs(_groups) do
+  for _, g in ipairs(st.groups) do
     local name     = g.logGroupName    or ""
     local retained = g.retentionInDays and (g.retentionInDays .. "d") or "never"
-    if _filter == "" or name:lower():find(_filter:lower(), 1, true) then
+    if st.filter == "" or name:lower():find(st.filter:lower(), 1, true) then
       table.insert(lines,
         pad_right(name, col_width) .. "  " .. pad_right(retained, 10) .. "  " .. fmt_size(g.storedBytes)
       )
-      _line_map[#lines] = name
+      st.line_map[#lines] = name
     end
   end
 
-  if not next(_line_map) then
+  if not next(st.line_map) then
     table.insert(lines, "(no log groups match)")
   end
 
@@ -108,14 +121,15 @@ local function render(buf)
 end
 
 ---@param buf       integer
+---@param st        CwGroupsState
 ---@param call_opts AwsCallOpts|nil
----@param pattern   string|nil  when set, pass --log-group-name-pattern (skips cache update)
-local function fetch(buf, call_opts, pattern)
+---@param pattern   string|nil
+local function fetch(buf, st, call_opts, pattern)
   buf_mod.set_loading(buf)
   local all = {}
-  _fetching  = true
-  _fetch_gen = _fetch_gen + 1
-  local my_gen = _fetch_gen   -- captured; used to discard results from stale fetches
+  st.fetching  = true
+  st.fetch_gen = st.fetch_gen + 1
+  local my_gen = st.fetch_gen
 
   local function fetch_page(next_token)
     local args = {
@@ -131,11 +145,10 @@ local function fetch(buf, call_opts, pattern)
     end
 
     spawn.run(args, function(ok, lines)
-      -- Discard if a newer fetch has started.
-      if my_gen ~= _fetch_gen then return end
+      if my_gen ~= st.fetch_gen then return end
 
       if not ok then
-        _fetching = false
+        st.fetching = false
         buf_mod.set_error(buf, lines)
         return
       end
@@ -143,7 +156,7 @@ local function fetch(buf, call_opts, pattern)
       local raw = table.concat(lines, "\n")
       local ok2, data = pcall(vim.json.decode, raw)
       if not ok2 or type(data) ~= "table" then
-        _fetching = false
+        st.fetching = false
         buf_mod.set_error(buf, { "Failed to parse JSON", raw })
         return
       end
@@ -157,18 +170,15 @@ local function fetch(buf, call_opts, pattern)
       end
 
       local has_more = type(data.nextToken) == "string"
-
-      -- Render what we have so far; _fetching stays true until last page.
-      _fetching = has_more
-      _groups   = all
-      render(buf)
+      st.fetching = has_more
+      st.groups   = all
+      render(buf, st)
 
       if has_more then
         fetch_page(data.nextToken)
       else
-        -- Full (unfiltered) fetch only: update the session cache.
         if not pattern or pattern == "" then
-          _cache = all
+          st.cache = all
         end
       end
     end, call_opts)
@@ -179,23 +189,23 @@ local function fetch(buf, call_opts, pattern)
 end
 
 -------------------------------------------------------------------------------
--- Cursor helper
+-- Cursor helpers
 -------------------------------------------------------------------------------
 
-local function group_under_cursor()
+local function group_under_cursor(st)
   local row = vim.api.nvim_win_get_cursor(0)[1]
-  return _line_map[row]
+  return st.line_map[row]
 end
 
---- Return the names of all groups whose buffer lines fall inside [r1, r2].
+---@param st CwGroupsState
 ---@param r1 integer
 ---@param r2 integer
 ---@return string[]
-local function groups_in_range(r1, r2)
+local function groups_in_range(st, r1, r2)
   local names = {}
   local seen  = {}
   for row = r1, r2 do
-    local name = _line_map[row]
+    local name = st.line_map[row]
     if name and not seen[name] then
       seen[name] = true
       table.insert(names, name)
@@ -204,10 +214,10 @@ local function groups_in_range(r1, r2)
   return names
 end
 
---- Remove `names` from `_groups` and `_cache` in-place, then re-render.
----@param names table<string, boolean>  set of names to remove
+---@param st    CwGroupsState
+---@param names table<string, boolean>
 ---@param buf   integer
-local function remove_from_state(names, buf)
+local function remove_from_state(st, names, buf)
   local function filter_list(list)
     local out = {}
     for _, g in ipairs(list) do
@@ -217,9 +227,9 @@ local function remove_from_state(names, buf)
     end
     return out
   end
-  _groups = filter_list(_groups)
-  if _cache then _cache = filter_list(_cache) end
-  render(buf)
+  st.groups = filter_list(st.groups)
+  if st.cache then st.cache = filter_list(st.cache) end
+  render(buf, st)
 end
 
 -------------------------------------------------------------------------------
@@ -229,26 +239,39 @@ end
 ---@param call_opts AwsCallOpts|nil
 ---@param fresh     boolean|nil  when true, bypass cache and re-fetch from AWS
 function M.open(call_opts, fresh)
-  local buf = buf_mod.get_or_create(BUF_NAME, FILETYPE)
+  local identity = config.identity(call_opts)
+  local buf = buf_mod.get_or_create(buf_name(identity), FILETYPE)
   buf_mod.open_split(buf)
 
-  -- Single-line delete (normal mode dd)
+  if not _state[identity] then
+    _state[identity] = {
+      groups    = {},
+      filter    = "",
+      line_map  = {},
+      cache     = nil,
+      fetching  = false,
+      fetch_gen = 0,
+      region    = config.resolve_region(call_opts),
+      profile   = config.resolve_profile(call_opts),
+    }
+  end
+  local st = _state[identity]
+
   local function delete_one()
-    local name = group_under_cursor()
+    local name = group_under_cursor(st)
     if not name then
       vim.notify("aws.nvim: no log group under cursor", vim.log.levels.WARN)
       return
     end
     require("aws.cloudwatch.delete").confirm(name, function()
-      remove_from_state({ [name] = true }, buf)
+      remove_from_state(st, { [name] = true }, buf)
     end, call_opts)
   end
 
-  -- Multi-line delete (visual mode dd) — confirm once, delete sequentially
   local function delete_visual()
     local r1 = vim.fn.line("'<")
     local r2 = vim.fn.line("'>")
-    local names = groups_in_range(r1, r2)
+    local names = groups_in_range(st, r1, r2)
     if #names == 0 then
       vim.notify("aws.nvim: no log groups in selection", vim.log.levels.WARN)
       return
@@ -265,7 +288,7 @@ function M.open(call_opts, fresh)
         local removed = {}
         local function next_delete(i)
           if i > #names then
-            remove_from_state(removed, buf)
+            remove_from_state(st, removed, buf)
             return
           end
           local name = names[i]
@@ -281,7 +304,7 @@ function M.open(call_opts, fresh)
 
   keymaps.apply_cloudwatch(buf, {
     open_streams = function()
-      local name = group_under_cursor()
+      local name = group_under_cursor(st)
       if not name then
         vim.notify("aws.nvim: no log group under cursor", vim.log.levels.WARN)
         return
@@ -293,46 +316,45 @@ function M.open(call_opts, fresh)
     delete_visual = delete_visual,
 
     filter = function()
-      vim.ui.input({ prompt = "Filter log groups: ", default = _filter }, function(input)
+      vim.ui.input({ prompt = "Filter log groups: ", default = st.filter }, function(input)
         if input == nil then return end
         if input == "" then
-          -- treat as clear
-          _filter = ""
-          if _cache then
-            _groups = _cache
-            render(buf)
+          st.filter = ""
+          if st.cache then
+            st.groups = st.cache
+            render(buf, st)
           else
-            fetch(buf, call_opts)
+            fetch(buf, st, call_opts)
           end
         else
-          _filter = input
-          fetch(buf, call_opts, input)
+          st.filter = input
+          fetch(buf, st, call_opts, input)
         end
       end)
     end,
 
     clear_filter = function()
-      _filter = ""
-      if _cache then
-        _groups = _cache
-        render(buf)
+      st.filter = ""
+      if st.cache then
+        st.groups = st.cache
+        render(buf, st)
       else
-        fetch(buf, call_opts)
+        fetch(buf, st, call_opts)
       end
     end,
 
     refresh = function()
-      fetch(buf, call_opts, _filter ~= "" and _filter or nil)
+      fetch(buf, st, call_opts, st.filter ~= "" and st.filter or nil)
     end,
 
     close = function() buf_mod.close_split(buf) end,
   })
 
-  if _cache and not fresh then
-    _groups = _cache
-    render(buf)
+  if st.cache and not fresh then
+    st.groups = st.cache
+    render(buf, st)
   else
-    fetch(buf, call_opts)
+    fetch(buf, st, call_opts)
   end
 end
 

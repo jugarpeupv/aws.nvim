@@ -30,6 +30,7 @@ end
 local function hint_line()
   local km = config.values.keymaps.s3
   local hints = {}
+  if km.open_bucket  then table.insert(hints, km.open_bucket  .. " open")    end
   if km.empty        then table.insert(hints, km.empty        .. " empty")   end
   if km.delete       then table.insert(hints, km.delete       .. " delete")  end
   if km.filter       then table.insert(hints, km.filter       .. " filter")  end
@@ -221,6 +222,44 @@ function M.open(call_opts)
   end
 
   keymaps.apply_s3(buf, {
+    open_bucket = function()
+      local name = bucket_under_cursor()
+      if not name then
+        vim.notify("aws.nvim: no bucket under cursor", vim.log.levels.WARN)
+        return
+      end
+      local ok, oil = pcall(require, "oil")
+      if not ok then
+        vim.notify("aws.nvim: oil.nvim is required to browse S3 buckets", vim.log.levels.ERROR)
+        return
+      end
+
+      -- Inject per-buffer profile/region into oil's extra_s3_args so that
+      -- s3fs.lua uses the correct credentials for this specific buffer.
+      -- extra_s3_args is read lazily by create_s3_command() inside s3fs.lua,
+      -- so patching it before oil.open() is sufficient.  We restore on the
+      -- next event-loop tick (vim.schedule) – by then create_s3_command() has
+      -- already captured the args for the async shell call.
+      local oil_cfg = require("oil.config")
+      local prev_s3_args = oil_cfg.extra_s3_args
+
+      local new_args = {}
+      local profile = (call_opts and call_opts.profile) or config.values.default_aws_profile
+      local region  = (call_opts and call_opts.region)  or config.values.default_aws_region
+      if profile then table.insert(new_args, "--profile=" .. profile) end
+      if region  then table.insert(new_args, "--region="  .. region)  end
+
+      oil_cfg.extra_s3_args = new_args
+
+      -- oil-s3:// requires Neovim 0.11+; older versions need oil-sss://
+      local scheme = (vim.version().minor >= 11) and "oil-s3://" or "oil-sss://"
+      oil.open(scheme .. name .. "/")
+
+      vim.schedule(function()
+        oil_cfg.extra_s3_args = prev_s3_args
+      end)
+    end,
+
     empty = function()
       local name = bucket_under_cursor()
       if not name then

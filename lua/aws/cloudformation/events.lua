@@ -4,6 +4,7 @@ local M = {}
 local spawn   = require("aws.spawn")
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
+local config  = require("aws.config")
 
 local FILETYPE = "aws-cloudformation"
 
@@ -43,8 +44,11 @@ local function fetch(stack_name, buf, call_opts)
     end
 
     local sep = "  " .. string.rep("-", 110)
+    local region = config.resolve_region(call_opts)
+    local title  = "  Events  >>  " .. stack_name
+    if region then title = title .. "   [region: " .. region .. "]" end
     local out = {
-      "  Events  >>  " .. stack_name,
+      title,
       sep,
       "",
       string.format("  %-26s  %-40s  %-36s  %s", "Time (UTC)", "Resource", "Status", "Reason"),

@@ -64,6 +64,7 @@ end
 function M.apply_s3(buf, actions)
   local km = require("aws.config").values.keymaps.s3
 
+  map(buf, km.open_bucket,  actions.open_bucket,  "open bucket in oil.nvim")
   map(buf, km.empty,        actions.empty,        "empty bucket")
   map(buf, km.delete,       actions.delete,        "delete bucket")
   map(buf, km.filter,       actions.filter,        "filter buckets")

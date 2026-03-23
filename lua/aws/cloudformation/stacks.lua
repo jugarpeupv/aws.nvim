@@ -6,12 +6,22 @@ local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
 local config  = require("aws.config")
 
-local BUF_NAME = "aws://cloudformation/stacks"
 local FILETYPE = "aws-cloudformation"
 
-local _stacks   = {}
-local _filter   = ""
-local _line_map = {}   -- 1-based line in the buffer -> stack name
+--- One entry per profile+region identity.
+---@class CfStacksState
+---@field stacks   table[]
+---@field filter   string
+---@field line_map table<integer,string>
+---@field region   string
+---@field profile  string|nil
+
+--- state keyed by identity string (e.g. "us-east-1" or "prod@eu-west-1")
+local _state = {}  -- identity -> CfStacksState
+
+local function buf_name(identity)
+  return "aws://cloudformation/stacks/" .. identity
+end
 
 -------------------------------------------------------------------------------
 -- Helpers
@@ -61,45 +71,44 @@ local function make_header(col_width)
   }
 end
 
---- Re-render the stacks buffer (header as normal lines + data rows).
----@param buf integer
-local function render(buf)
-  -- Compute column width from the widest visible name; clamp to 80.
+--- Re-render the stacks buffer for a given identity.
+---@param buf      integer
+---@param st       CfStacksState
+local function render(buf, st)
   local col_width = 10
-  for _, s in ipairs(_stacks) do
+  for _, s in ipairs(st.stacks) do
     local name = s.StackName or ""
-    if _filter == "" or name:lower():find(_filter:lower(), 1, true) then
+    if st.filter == "" or name:lower():find(st.filter:lower(), 1, true) then
       if #name > col_width then col_width = #name end
     end
   end
-  col_width = col_width + 2   -- breathing room (no 99-char cap)
+  col_width = col_width + 2
 
   local title = "CloudFormation Stacks"
-    .. (_filter ~= "" and ("   [filter: " .. _filter .. "]") or "")
+    .. "   [region: " .. st.region .. "]"
+    .. (st.profile and ("   [profile: " .. st.profile .. "]") or "")
+    .. (st.filter ~= "" and ("   [filter: " .. st.filter .. "]") or "")
 
-  -- Header lines (normal buffer lines, not a float)
   local header = make_header(col_width)
-
-  -- Assemble full line list: blank + title + blank + header + data rows
   local lines = { "", title, "" }
   for _, h in ipairs(header) do
     table.insert(lines, h)
   end
 
-  _line_map = {}
+  st.line_map = {}
 
-  for _, s in ipairs(_stacks) do
+  for _, s in ipairs(st.stacks) do
     local name   = s.StackName   or ""
     local status = s.StackStatus or "UNKNOWN"
-    if _filter == "" or name:lower():find(_filter:lower(), 1, true) then
+    if st.filter == "" or name:lower():find(st.filter:lower(), 1, true) then
       table.insert(lines,
         status_icon(status) .. " " .. pad_right(name, col_width) .. "  " .. status
       )
-      _line_map[#lines] = name
+      st.line_map[#lines] = name
     end
   end
 
-  if not next(_line_map) then
+  if not next(st.line_map) then
     table.insert(lines, "(no stacks match)")
   end
 
@@ -108,8 +117,9 @@ end
 
 --- Fetch stacks from AWS, paginating incrementally and re-rendering each page.
 ---@param buf       integer
+---@param st        CfStacksState
 ---@param call_opts AwsCallOpts|nil
-local function fetch(buf, call_opts)
+local function fetch(buf, st, call_opts)
   buf_mod.set_loading(buf)
   local all = {}
 
@@ -140,8 +150,8 @@ local function fetch(buf, call_opts)
       end
 
       table.sort(all, function(a, b) return (a.StackName or "") < (b.StackName or "") end)
-      _stacks = all
-      render(buf)
+      st.stacks = all
+      render(buf, st)
 
       if type(data.NextToken) == "string" then
         fetch_page(data.NextToken)
@@ -154,23 +164,23 @@ local function fetch(buf, call_opts)
 end
 
 -------------------------------------------------------------------------------
--- Cursor helper
+-- Cursor helpers (operate on the focused buffer's state)
 -------------------------------------------------------------------------------
 
-local function stack_under_cursor()
+local function stack_under_cursor(st)
   local row = vim.api.nvim_win_get_cursor(0)[1]
-  return _line_map[row]
+  return st.line_map[row]
 end
 
---- Return the names of all stacks whose buffer lines fall inside [r1, r2].
+---@param st CfStacksState
 ---@param r1 integer
 ---@param r2 integer
 ---@return string[]
-local function stacks_in_range(r1, r2)
+local function stacks_in_range(st, r1, r2)
   local names = {}
   local seen  = {}
   for row = r1, r2 do
-    local name = _line_map[row]
+    local name = st.line_map[row]
     if name and not seen[name] then
       seen[name] = true
       table.insert(names, name)
@@ -179,18 +189,18 @@ local function stacks_in_range(r1, r2)
   return names
 end
 
---- Remove `names` from `_stacks` in-place, then re-render.
----@param names table<string, boolean>  set of names to remove
+---@param st    CfStacksState
+---@param names table<string, boolean>
 ---@param buf   integer
-local function remove_from_state(names, buf)
+local function remove_from_state(st, names, buf)
   local out = {}
-  for _, s in ipairs(_stacks) do
+  for _, s in ipairs(st.stacks) do
     if not names[s.StackName] then
       table.insert(out, s)
     end
   end
-  _stacks = out
-  render(buf)
+  st.stacks = out
+  render(buf, st)
 end
 
 -------------------------------------------------------------------------------
@@ -199,28 +209,39 @@ end
 
 ---@param call_opts AwsCallOpts|nil
 function M.open(call_opts)
-  local buf = buf_mod.get_or_create(BUF_NAME, FILETYPE)
+  local identity = config.identity(call_opts)
+  local buf = buf_mod.get_or_create(buf_name(identity), FILETYPE)
   buf_mod.open_split(buf)
+
+  -- Initialise state for this identity if this is the first open.
+  if not _state[identity] then
+    _state[identity] = {
+      stacks   = {},
+      filter   = "",
+      line_map = {},
+      region   = config.resolve_region(call_opts),
+      profile  = config.resolve_profile(call_opts),
+    }
+  end
+  local st = _state[identity]
 
   local delete_mod = require("aws.cloudformation.delete")
 
-  -- Single-line delete (normal mode dd)
   local function delete_one()
-    local name = stack_under_cursor()
+    local name = stack_under_cursor(st)
     if not name then
       vim.notify("aws.nvim: no stack under cursor", vim.log.levels.WARN)
       return
     end
     delete_mod.confirm(name, function()
-      remove_from_state({ [name] = true }, buf)
+      remove_from_state(st, { [name] = true }, buf)
     end, call_opts)
   end
 
-  -- Multi-line delete (visual mode dd) — confirm once, delete sequentially
   local function delete_visual()
     local r1 = vim.fn.line("'<")
     local r2 = vim.fn.line("'>")
-    local names = stacks_in_range(r1, r2)
+    local names = stacks_in_range(st, r1, r2)
     if #names == 0 then
       vim.notify("aws.nvim: no stacks in selection", vim.log.levels.WARN)
       return
@@ -236,7 +257,7 @@ function M.open(call_opts)
         local removed = {}
         local function next_delete(i)
           if i > #names then
-            remove_from_state(removed, buf)
+            remove_from_state(st, removed, buf)
             return
           end
           local name = names[i]
@@ -252,7 +273,7 @@ function M.open(call_opts)
 
   keymaps.apply_cloudformation(buf, {
     open_events = function()
-      local name = stack_under_cursor()
+      local name = stack_under_cursor(st)
       if not name then
         vim.notify("aws.nvim: no stack under cursor", vim.log.levels.WARN)
         return
@@ -264,30 +285,32 @@ function M.open(call_opts)
     delete_visual = delete_visual,
 
     filter = function()
-      vim.ui.input({ prompt = "Filter stacks: ", default = _filter }, function(input)
+      vim.ui.input({ prompt = "Filter stacks: ", default = st.filter }, function(input)
         if input == nil then return end
-        _filter = input
-        render(buf)
+        st.filter = input
+        render(buf, st)
       end)
     end,
 
     clear_filter = function()
-      _filter = ""
-      render(buf)
+      st.filter = ""
+      render(buf, st)
     end,
 
-    refresh = function() fetch(buf, call_opts) end,
+    refresh = function() fetch(buf, st, call_opts) end,
 
     close = function() buf_mod.close_split(buf) end,
   })
 
-  fetch(buf, call_opts)
+  fetch(buf, st, call_opts)
 end
 
 ---@param call_opts AwsCallOpts|nil
 function M.refresh(call_opts)
-  local buf = buf_mod.get_or_create(BUF_NAME, FILETYPE)
-  fetch(buf, call_opts)
+  local identity = config.identity(call_opts)
+  local buf = buf_mod.get_or_create(buf_name(identity), FILETYPE)
+  local st  = _state[identity]
+  if st then fetch(buf, st, call_opts) end
 end
 
 return M

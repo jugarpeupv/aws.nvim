@@ -4,6 +4,7 @@ local M = {}
 local spawn   = require("aws.spawn")
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
+local config  = require("aws.config")
 
 local FILETYPE = "aws-cloudwatch"
 
@@ -40,12 +41,15 @@ local function fetch(group_name, stream_name, buf, call_opts)
     local events = type(data.events) == "table" and data.events or {}
 
     local sep = string.rep("-", 100)
+    local region = config.resolve_region(call_opts)
+    local title  = "Log Events  >>  " .. group_name .. "  /  " .. stream_name
+    if region then title = title .. "   [region: " .. region .. "]" end
     local out = {
       sep,
       "R refresh",
       sep,
       "",
-      "Log Events  >>  " .. group_name .. "  /  " .. stream_name,
+      title,
       "",
     }
 

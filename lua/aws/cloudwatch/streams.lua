@@ -25,7 +25,7 @@ local function pad_right(s, width)
   return s .. string.rep(" ", width - len)
 end
 
-local function hint_line()
+local function hint_line(region)
   local km = config.values.keymaps.cloudwatch
   local hints = {}
   if km.open_logs then table.insert(hints, km.open_logs .. " open logs") end
@@ -35,12 +35,13 @@ end
 
 --- Build the 5-line header block given the name column width.
 ---@param col_width integer
+---@param region    string|nil
 ---@return string[]
-local function make_header(col_width)
+local function make_header(col_width, region)
   local sep = string.rep("-", col_width + 22)
   return {
     sep,
-    hint_line(),
+    hint_line(region),
     sep,
     pad_right("Stream name", col_width) .. "  " .. "Last event (UTC)",
     string.rep("-", col_width + 22),
@@ -58,9 +59,10 @@ local function render(buf, group_name)
   col_width = col_width + 2   -- breathing room (no 99-char cap)
 
   -- Header lines (normal buffer lines, not a float)
-  local header = make_header(col_width)
+  local header = make_header(col_width, st.region)
 
-  local lines = { "", "Log Streams  >>  " .. group_name, "" }
+  local region_tag = st.region and ("   [region: " .. st.region .. "]") or ""
+  local lines = { "", "Log Streams  >>  " .. group_name .. region_tag, "" }
   for _, h in ipairs(header) do
     table.insert(lines, h)
   end
@@ -109,7 +111,8 @@ local function fetch(group_name, buf, call_opts)
     end
 
     local streams = type(data.logStreams) == "table" and data.logStreams or {}
-    _state[group_name] = { streams = streams, line_map = {} }
+    local region  = config.resolve_region(call_opts)
+    _state[group_name] = { streams = streams, line_map = {}, region = region }
     render(buf, group_name)
   end, call_opts)
 end
