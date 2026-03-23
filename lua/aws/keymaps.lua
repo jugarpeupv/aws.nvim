@@ -19,13 +19,30 @@ local function map(buf, key, fn, desc)
 end
 
 --- Set a single buffer-local visual-mode mapping.
+--- The callback receives (r1, r2) — the inclusive 1-based line range of the
+--- visual selection — so it does not need to read '< / '> marks itself.
+--- Passing the range at mapping time (before mode switches) avoids the classic
+--- issue where a two-key sequence like "dd" causes Vim to leave visual mode
+--- after the first key, making the second key fire the normal-mode mapping.
 ---@param buf  integer
 ---@param key  string|false
----@param fn   function
+---@param fn   fun(r1: integer, r2: integer)
 ---@param desc string
 local function vmap(buf, key, fn, desc)
   if not key or key == false then return end
-  vim.keymap.set("v", key, fn, {
+  vim.keymap.set("v", key, function()
+    -- getpos("v") returns the *start* of the visual selection in all visual modes.
+    -- The current cursor position is the *end*.
+    local vpos   = vim.fn.getpos("v")   -- {bufnum, line, col, off}
+    local curpos = vim.fn.getpos(".")
+    local r1 = math.min(vpos[2],   curpos[2])
+    local r2 = math.max(vpos[2],   curpos[2])
+    -- Exit visual mode first so ui.select / vim.notify work cleanly.
+    vim.api.nvim_feedkeys(
+      vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "nx", false
+    )
+    fn(r1, r2)
+  end, {
     buffer  = buf,
     noremap = true,
     silent  = true,

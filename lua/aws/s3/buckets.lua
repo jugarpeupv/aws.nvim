@@ -236,9 +236,7 @@ function M.open(call_opts)
   end
 
   -- Multi-line delete (visual mode dd) — confirm once, empty+delete sequentially
-  local function delete_visual()
-    local r1 = vim.fn.line("'<")
-    local r2 = vim.fn.line("'>")
+  local function delete_visual(r1, r2)
     local names = buckets_in_range(r1, r2)
     if #names == 0 then
       vim.notify("aws.nvim: no buckets in selection", vim.log.levels.WARN)

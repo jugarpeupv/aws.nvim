@@ -239,9 +239,7 @@ function M.open(call_opts)
     end, call_opts)
   end
 
-  local function delete_visual()
-    local r1 = vim.fn.line("'<")
-    local r2 = vim.fn.line("'>")
+  local function delete_visual(r1, r2)
     local names = stacks_in_range(st, r1, r2)
     if #names == 0 then
       vim.notify("aws.nvim: no stacks in selection", vim.log.levels.WARN)
