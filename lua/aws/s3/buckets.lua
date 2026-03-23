@@ -13,6 +13,44 @@ local _buckets  = {}
 local _filter   = ""
 local _line_map = {}
 
+-- Registry: bucket_name → { profile, region }
+-- Populated when a bucket is opened so the BufEnter autocmd can restore the
+-- correct extra_s3_args whenever the user re-enters that oil buffer.
+local _bucket_creds = {}
+
+-- Ensure the BufEnter autocmd that keeps extra_s3_args in sync is created
+-- exactly once across all calls to M.open().
+local _autocmd_created = false
+
+local function ensure_oil_s3_autocmd()
+  if _autocmd_created then return end
+  _autocmd_created = true
+
+  -- The oil-s3:// scheme is for Neovim ≥ 0.11; older builds use oil-sss://.
+  -- We match both patterns.
+  local patterns = { "oil-s3://*", "oil-sss://*" }
+
+  vim.api.nvim_create_autocmd("BufEnter", {
+    pattern = patterns,
+    desc = "aws.nvim: restore extra_s3_args for the current S3 bucket",
+    callback = function(ev)
+      local bufname = ev.match or vim.api.nvim_buf_get_name(ev.buf)
+      -- Extract bucket name from "oil-s3://bucket/..." or "oil-sss://bucket/..."
+      local bucket = bufname:match("^oil%-s[^/]*://([^/]+)")
+      local creds  = bucket and _bucket_creds[bucket]
+      local oil_cfg = package.loaded["oil.config"]
+      if not oil_cfg then return end
+
+      if creds then
+        local args = {}
+        if creds.profile then table.insert(args, "--profile=" .. creds.profile) end
+        if creds.region  then table.insert(args, "--region="  .. creds.region)  end
+        oil_cfg.extra_s3_args = args
+      end
+    end,
+  })
+end
+
 -------------------------------------------------------------------------------
 -- Helpers
 -------------------------------------------------------------------------------
@@ -234,30 +272,26 @@ function M.open(call_opts)
         return
       end
 
-      -- Inject per-buffer profile/region into oil's extra_s3_args so that
-      -- s3fs.lua uses the correct credentials for this specific buffer.
-      -- extra_s3_args is read lazily by create_s3_command() inside s3fs.lua,
-      -- so patching it before oil.open() is sufficient.  We restore on the
-      -- next event-loop tick (vim.schedule) – by then create_s3_command() has
-      -- already captured the args for the async shell call.
-      local oil_cfg = require("oil.config")
-      local prev_s3_args = oil_cfg.extra_s3_args
-
-      local new_args = {}
+      -- Resolve credentials for this buffer's identity.
       local profile = (call_opts and call_opts.profile) or config.values.default_aws_profile
       local region  = (call_opts and call_opts.region)  or config.values.default_aws_region
+
+      -- Store creds keyed by bucket name so the BufEnter autocmd can
+      -- re-apply them whenever the user navigates back to this oil buffer.
+      _bucket_creds[name] = { profile = profile, region = region }
+      ensure_oil_s3_autocmd()
+
+      -- Apply immediately for the initial open (list_dir fires async, so we
+      -- must set extra_s3_args before oil.open() schedules the first ls call).
+      local oil_cfg = require("oil.config")
+      local new_args = {}
       if profile then table.insert(new_args, "--profile=" .. profile) end
       if region  then table.insert(new_args, "--region="  .. region)  end
-
       oil_cfg.extra_s3_args = new_args
 
       -- oil-s3:// requires Neovim 0.11+; older versions need oil-sss://
       local scheme = (vim.version().minor >= 11) and "oil-s3://" or "oil-sss://"
       oil.open(scheme .. name .. "/")
-
-      vim.schedule(function()
-        oil_cfg.extra_s3_args = prev_s3_args
-      end)
     end,
 
     empty = function()
