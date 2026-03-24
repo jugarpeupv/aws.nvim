@@ -1,6 +1,9 @@
 " aws.nvim – syntax highlighting for the aws-s3 filetype
 syntax clear
 
+" Stop regex matching past column 120 to avoid lag when holding j/k
+setlocal synmaxcol=120
+
 " ── Separators ───────────────────────────────────────────────────────────────
 syntax match AwsS3Sep       /^-\+$/
 

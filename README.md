@@ -18,6 +18,7 @@ Supported services:
 - Aws ACM (Certificate Manager)
 - Aws Secrets Manager
 - Aws CloudFront
+- Aws API Gateway
 
 ## Screenshots
 
@@ -151,6 +152,13 @@ require("aws").setup({
       refresh           = "R",    -- re-fetch from AWS
       detail_refresh    = "R",    -- refresh the detail view
       detail_invalidate = "I",    -- create a cache invalidation from detail buffer
+    },
+    apigateway = {
+      open_detail    = "<CR>", -- open detail view for REST API under cursor
+      filter         = "F",    -- prompt to filter APIs by name
+      clear_filter   = "C",    -- clear active filter
+      refresh        = "R",    -- re-fetch from AWS
+      detail_refresh = "R",    -- refresh the detail view
     },
   },
 })
@@ -558,6 +566,54 @@ All keys are configurable via `setup()` (see above).
 
 ---
 
+## API Gateway
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `:AwsAGW list` | Open the REST APIs list (default when no sub-command given) |
+| `:AwsAGW detail <id>` | Open the detail view for a specific REST API |
+| `:AwsAGW --region <r>` | Open APIs in a specific region |
+| `:AwsAGW --profile <p>` | Open APIs with a specific profile |
+
+### REST APIs buffer (`filetype=aws-apigateway`)
+
+| Default key | Action |
+|---|---|
+| `<CR>` | Open detail view for the REST API under cursor (vertical split) |
+| `F` | Filter APIs by ID or name (client-side, no extra API calls) |
+| `C` | Clear active filter |
+| `R` | Refresh the list |
+
+The list shows each API's ID, name, endpoint type (REGIONAL/EDGE/PRIVATE),
+creation date, and description (truncated). All pages are fetched automatically
+via `position` pagination and rendered incrementally as they arrive.
+
+### Detail buffer (`filetype=aws-apigateway`)
+
+Opened in a vertical split from the REST APIs buffer with `<CR>`. Fires four
+parallel AWS CLI calls (`get-rest-api`, `get-stages`, `get-resources`,
+`get-authorizers`) and renders:
+
+- **General:** API ID, name, description, creation date, API key source,
+  endpoint type(s), tags
+- **Stages:** one sub-block per stage — name, deployment ID, created/updated
+  dates, caching enabled/size, X-Ray tracing, and stage variables (when any)
+- **Resources:** flat list sorted by path — each resource shows its full path,
+  then each HTTP method indented with authorization type, integration type, and
+  integration URI (truncated)
+- **Authorizers:** one sub-block per authorizer — name, type
+  (TOKEN/REQUEST/COGNITO_USER_POOLS), identity source, TTL, and Lambda URI
+
+| Default key | Action |
+|---|---|
+| `R` | Refresh the detail (re-fires all four calls in parallel) |
+
+All keys are configurable via `setup()` (see above).
+
+---
+
 ## Architecture
 
 ```
@@ -607,6 +663,10 @@ aws.nvim/
         ├── distributions.lua       # List, filter, and render distributions (paginated)
         ├── detail.lua              # Distribution detail viewer (vertical split)
         └── invalidate.lua          # Async cache invalidation with path prompt
+    └── apigateway/
+        ├── init.lua                # API Gateway public surface
+        ├── apis.lua                # List, filter, and render REST APIs (paginated)
+        └── detail.lua              # REST API detail viewer (parallel fetch, vertical split)
 ```
 
 All CLI calls are asynchronous (`vim.loop.spawn`); the editor never blocks

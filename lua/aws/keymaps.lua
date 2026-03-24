@@ -234,4 +234,25 @@ function M.apply_cloudfront_detail(buf, actions)
   map(buf, km.detail_invalidate, actions.invalidate, "create cache invalidation")
 end
 
+--- Apply API Gateway REST APIs list-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_apigateway(buf, actions)
+  local km = require("aws.config").values.keymaps.apigateway
+
+  map(buf, km.open_detail,  actions.open_detail,  "open REST API detail")
+  map(buf, km.filter,       actions.filter,        "filter REST APIs")
+  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
+  map(buf, km.refresh,      actions.refresh,       "refresh REST APIs")
+end
+
+--- Apply API Gateway detail-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_apigateway_detail(buf, actions)
+  local km = require("aws.config").values.keymaps.apigateway
+
+  map(buf, km.detail_refresh, actions.refresh, "refresh REST API detail")
+end
+
 return M

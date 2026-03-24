@@ -28,4 +28,7 @@ M.secretsmanager = require("aws.secretsmanager")
 --- CloudFront operations.
 M.cloudfront = require("aws.cloudfront")
 
+--- API Gateway operations.
+M.apigateway = require("aws.apigateway")
+
 return M

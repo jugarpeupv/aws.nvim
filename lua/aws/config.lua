@@ -78,6 +78,15 @@ local M = {}
 ---@field detail_refresh      string|false  refresh the detail view
 ---@field detail_invalidate   string|false  create a cache invalidation from detail buffer
 
+---@class AwsKeymapsApiGateway
+--- Keymaps active inside API Gateway buffers.
+--- Set any key to false to disable it.
+---@field open_detail    string|false  open detail view for REST API under cursor
+---@field filter         string|false  prompt to filter APIs by name
+---@field clear_filter   string|false  clear active filter
+---@field refresh        string|false  re-fetch from AWS
+---@field detail_refresh string|false  refresh the detail view
+
 ---@class AwsKeymaps
 ---@field cloudformation AwsKeymapsCF
 ---@field s3             AwsKeymapsS3
@@ -86,6 +95,7 @@ local M = {}
 ---@field acm            AwsKeymapsACM
 ---@field secretsmanager AwsKeymapsSecretsManager
 ---@field cloudfront     AwsKeymapsCloudFront
+---@field apigateway     AwsKeymapsApiGateway
 
 ---@class AwsIcons
 ---@field stack       string
@@ -181,6 +191,13 @@ local defaults = {
       refresh           = "R",
       detail_refresh    = "R",
       detail_invalidate = "I",
+    },
+    apigateway = {
+      open_detail    = "<CR>",
+      filter         = "F",
+      clear_filter   = "C",
+      refresh        = "R",
+      detail_refresh = "R",
     },
   },
 }
