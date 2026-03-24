@@ -136,4 +136,30 @@ function M.apply_cloudwatch_logs(buf, actions)
   map(buf, km.refresh, actions.refresh, "refresh log events")
 end
 
+--- Apply Lambda functions-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_lambda(buf, actions)
+  local km = require("aws.config").values.keymaps.lambda
+
+  map(buf, km.open_detail,  actions.open_detail,  "open lambda function detail")
+  map(buf, km.open_logs,    actions.open_logs,     "open CloudWatch logs for function")
+  map(buf, km.delete,       actions.delete,        "delete lambda function")
+  map(buf, km.filter,       actions.filter,        "filter functions")
+  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
+  map(buf, km.refresh,      actions.refresh,       "refresh functions")
+  -- Visual-mode delete
+  vmap(buf, km.delete, actions.delete_visual, "delete selected lambda functions")
+end
+
+--- Apply Lambda detail-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_lambda_detail(buf, actions)
+  local km = require("aws.config").values.keymaps.lambda
+
+  map(buf, km.detail_logs, actions.open_logs, "open CloudWatch logs for function")
+  map(buf, km.refresh,     actions.refresh,   "refresh detail")
+end
+
 return M

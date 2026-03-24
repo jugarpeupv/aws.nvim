@@ -34,10 +34,23 @@ local M = {}
 ---@field refresh      string|false  re-fetch from AWS
 ---@field close        string|false  close the window
 
+---@class AwsKeymapsLambda
+--- Keymaps active inside Lambda buffers.
+--- Set any key to false to disable it.
+---@field open_detail  string|false  open detail view for function under cursor
+---@field open_logs    string|false  open CloudWatch log streams for function under cursor
+---@field delete       string|false  delete function under cursor
+---@field filter       string|false  prompt to filter functions by name
+---@field clear_filter string|false  clear active filter
+---@field refresh      string|false  re-fetch from AWS
+---@field close        string|false  close the window
+---@field detail_logs  string|false  open CW log streams from the detail buffer
+
 ---@class AwsKeymaps
 ---@field cloudformation AwsKeymapsCF
 ---@field s3             AwsKeymapsS3
 ---@field cloudwatch     AwsKeymapsCW
+---@field lambda         AwsKeymapsLambda
 
 ---@class AwsIcons
 ---@field stack       string
@@ -97,6 +110,16 @@ local defaults = {
       clear_filter = "C",
       refresh      = "R",
       close        = "q",
+    },
+    lambda = {
+      open_detail  = "<CR>",
+      open_logs    = "L",
+      delete       = "dd",
+      filter       = "F",
+      clear_filter = "C",
+      refresh      = "R",
+      close        = "q",
+      detail_logs  = "L",
     },
   },
 }

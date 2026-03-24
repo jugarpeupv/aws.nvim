@@ -16,4 +16,7 @@ M.s3 = require("aws.s3")
 --- CloudWatch operations.
 M.cloudwatch = require("aws.cloudwatch")
 
+--- Lambda operations.
+M.lambda = require("aws.lambda")
+
 return M

@@ -1,9 +1,9 @@
 # aws.nvim
 
 Manage AWS resources without leaving your editor. aws.nvim brings
-CloudFormation stacks, S3 buckets, and CloudWatch log groups directly into
-Neovim buffers — letting you browse, filter, delete, and tail logs using the
-same motions and keybindings you already know.
+CloudFormation stacks, S3 buckets, CloudWatch log groups, and Lambda functions
+directly into Neovim buffers — letting you browse, filter, delete, and tail
+logs using the same motions and keybindings you already know.
 
 All AWS CLI calls run asynchronously, so the editor never blocks. Output lands
 in standard `nofile` buffers, which means `/` search, `gg`/`G`, yank, and
@@ -107,6 +107,15 @@ require("aws").setup({
       clear_filter = "C",      -- clear active filter
       refresh      = "R",      -- re-fetch from AWS
     },
+    lambda = {
+      open_detail  = "<CR>",   -- open detail view for function under cursor
+      open_logs    = "L",      -- open CloudWatch log streams for function
+      delete       = "dd",     -- delete function under cursor
+      filter       = "F",      -- prompt to filter functions by name
+      clear_filter = "C",      -- clear active filter
+      refresh      = "R",      -- re-fetch from AWS
+      detail_logs  = "L",      -- open CW log streams from the detail buffer
+    },
   },
 })
 ```
@@ -122,6 +131,7 @@ invocation. The flags can appear anywhere in the argument list.
 :AwsCF list --profile prod --region eu-west-1
 :AwsS3 --region ap-southeast-1
 :AwsCW list --profile staging
+:AwsLambda list --region eu-west-1
 ```
 
 Tab-completion is available for both flags and sub-commands.
@@ -269,6 +279,62 @@ All keys are configurable via `setup()` (see above).
 
 ---
 
+## Lambda
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `:AwsLambda list` | Open the functions list (default when no sub-command given) |
+| `:AwsLambda detail <name>` | Open the detail view for a specific function |
+| `:AwsLambda delete <name>` | Delete a function (with confirmation) |
+| `:AwsLambda --region <r>` | Open functions in a specific region |
+| `:AwsLambda --profile <p>` | Open functions with a specific profile |
+
+### Functions buffer (`filetype=aws-lambda`)
+
+| Default key | Action |
+|---|---|
+| `<CR>` | Open detail view for the function under cursor (vertical split) |
+| `L` | Open CloudWatch log streams for the function under cursor |
+| `dd` | Delete the function under cursor (asks for confirmation) |
+| `F` | Filter functions by name (client-side, no extra API calls) |
+| `C` | Clear active filter |
+| `R` | Refresh the list |
+
+The list shows each function's runtime, memory allocation, and code size. All
+pages are fetched automatically via `Marker`/`NextMarker` pagination and
+rendered incrementally as they arrive.
+
+Visual-mode `dd` over a range of lines deletes all selected functions in
+sequence after a single confirmation prompt.
+
+### Detail buffer (`filetype=aws-lambda`)
+
+Opened in a vertical split from the functions buffer with `<CR>`. Fetches the
+full function configuration via `lambda get-function-configuration` and
+displays:
+
+- Runtime, handler, memory, timeout, code size, last modified, role
+- Description and architecture (when present)
+- VPC ID (when the function is VPC-attached)
+- Environment variables (key → value table)
+- Layers (full ARNs)
+- CloudWatch log group link (`/aws/lambda/<function-name>`)
+
+| Default key | Action |
+|---|---|
+| `L` | Open CloudWatch log streams for this function |
+| `R` | Refresh the configuration |
+
+The Lambda log group is always `/aws/lambda/<function-name>`. Pressing `L`
+opens the streams buffer directly in a split without needing to navigate to
+`:AwsCW` first.
+
+All keys are configurable via `setup()` (see above).
+
+---
+
 ## Architecture
 
 ```
@@ -292,12 +358,17 @@ aws.nvim/
     │   ├── buckets.lua             # List, filter, and render buckets
     │   ├── empty.lua               # Async bucket empty with confirmation
     │   └── delete.lua              # Async bucket deletion with confirmation
-    └── cloudwatch/
-        ├── init.lua                # CloudWatch public surface
-        ├── groups.lua              # List, filter, and render log groups (paginated)
-        ├── streams.lua             # Log streams viewer (vertical split)
-        ├── logs.lua                # Log events viewer (vertical split)
-        └── delete.lua              # Async log group deletion with confirmation
+    ├── cloudwatch/
+    │   ├── init.lua                # CloudWatch public surface
+    │   ├── groups.lua              # List, filter, and render log groups (paginated)
+    │   ├── streams.lua             # Log streams viewer (vertical split)
+    │   ├── logs.lua                # Log events viewer (vertical split)
+    │   └── delete.lua              # Async log group deletion with confirmation
+    └── lambda/
+        ├── init.lua                # Lambda public surface
+        ├── functions.lua           # List, filter, and render functions (paginated)
+        ├── detail.lua              # Function detail viewer (vertical split)
+        └── delete.lua              # Async function deletion with confirmation
 ```
 
 All CLI calls are asynchronous (`vim.loop.spawn`); the editor never blocks
