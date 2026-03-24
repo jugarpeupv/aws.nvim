@@ -46,11 +46,22 @@ local M = {}
 ---@field close        string|false  close the window
 ---@field detail_logs  string|false  open CW log streams from the detail buffer
 
+---@class AwsKeymapsACM
+--- Keymaps active inside ACM (Certificate Manager) buffers.
+--- Set any key to false to disable it.
+---@field open_detail    string|false  open detail view for certificate under cursor
+---@field delete         string|false  delete certificate under cursor
+---@field filter         string|false  prompt to filter certificates by domain
+---@field clear_filter   string|false  clear active filter
+---@field refresh        string|false  re-fetch from AWS
+---@field detail_refresh string|false  refresh the detail view
+
 ---@class AwsKeymaps
 ---@field cloudformation AwsKeymapsCF
 ---@field s3             AwsKeymapsS3
 ---@field cloudwatch     AwsKeymapsCW
 ---@field lambda         AwsKeymapsLambda
+---@field acm            AwsKeymapsACM
 
 ---@class AwsIcons
 ---@field stack       string
@@ -120,6 +131,14 @@ local defaults = {
       refresh      = "R",
       close        = "q",
       detail_logs  = "L",
+    },
+    acm = {
+      open_detail    = "<CR>",
+      delete         = "dd",
+      filter         = "F",
+      clear_filter   = "C",
+      refresh        = "R",
+      detail_refresh = "R",
     },
   },
 }

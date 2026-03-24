@@ -298,3 +298,65 @@ end, {
     return {}
   end,
 })
+
+-------------------------------------------------------------------------------
+-- :AwsACM [--region <r>] [--profile <p>] [subcommand [arn]]
+-------------------------------------------------------------------------------
+
+vim.api.nvim_create_user_command("AwsACM", function(opts)
+  local args, call_opts = parse_flags(opts.fargs)
+  local sub = args[1] or "list"
+  local arn = args[2]
+
+  if sub == "list" or sub == "ls" then
+    aws.acm.list_certificates(call_opts)
+
+  elseif sub == "detail" then
+    if not arn or arn == "" then
+      vim.notify("Usage: :AwsACM detail <certificate-arn>", vim.log.levels.WARN)
+      return
+    end
+    aws.acm.open_detail(arn, call_opts)
+
+  elseif sub == "delete" or sub == "del" then
+    if not arn or arn == "" then
+      vim.notify("Usage: :AwsACM delete <certificate-arn>", vim.log.levels.WARN)
+      return
+    end
+    -- Extract domain from arn for display (last segment is the cert ID, not the domain)
+    aws.acm.delete_certificate(arn, arn, nil, call_opts)
+
+  else
+    vim.notify(
+      "aws.nvim: unknown sub-command '" .. sub .. "'\n"
+        .. "Available: list, detail <arn>, delete <arn>",
+      vim.log.levels.WARN
+    )
+  end
+end, {
+  nargs = "*",
+  desc  = "aws.nvim: ACM (Certificate Manager) operations",
+  complete = function(arglead, cmdline, _)
+    if arglead:sub(1, 1) == "-" then
+      local flags = { "--region", "--profile" }
+      local out = {}
+      for _, f in ipairs(flags) do
+        if f:find(arglead, 1, true) == 1 then table.insert(out, f) end
+      end
+      return out
+    end
+    local parts = vim.split(cmdline, "%s+", { trimempty = true })
+    local positional_count = 0
+    for _, p in ipairs(parts) do
+      if p:sub(1, 1) ~= "-" then positional_count = positional_count + 1 end
+    end
+    if positional_count <= 1 or (positional_count == 2 and not cmdline:match("%s$")) then
+      local out = {}
+      for _, s in ipairs({ "list", "detail", "delete" }) do
+        if s:find(arglead, 1, true) == 1 then table.insert(out, s) end
+      end
+      return out
+    end
+    return {}
+  end,
+})

@@ -19,4 +19,7 @@ M.cloudwatch = require("aws.cloudwatch")
 --- Lambda operations.
 M.lambda = require("aws.lambda")
 
+--- ACM (Certificate Manager) operations.
+M.acm = require("aws.acm")
+
 return M

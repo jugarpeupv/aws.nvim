@@ -162,4 +162,28 @@ function M.apply_lambda_detail(buf, actions)
   map(buf, km.refresh,     actions.refresh,   "refresh detail")
 end
 
+--- Apply ACM certificates-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_acm(buf, actions)
+  local km = require("aws.config").values.keymaps.acm
+
+  map(buf, km.open_detail,  actions.open_detail,  "open certificate detail")
+  map(buf, km.delete,       actions.delete,        "delete certificate")
+  map(buf, km.filter,       actions.filter,        "filter certificates")
+  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
+  map(buf, km.refresh,      actions.refresh,       "refresh certificates")
+  -- Visual-mode delete
+  vmap(buf, km.delete, actions.delete_visual, "delete selected certificates")
+end
+
+--- Apply ACM certificate detail-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_acm_detail(buf, actions)
+  local km = require("aws.config").values.keymaps.acm
+
+  map(buf, km.detail_refresh, actions.refresh, "refresh certificate detail")
+end
+
 return M

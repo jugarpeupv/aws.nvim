@@ -1,9 +1,10 @@
 # aws.nvim
 
 Manage AWS resources without leaving your editor. aws.nvim brings
-CloudFormation stacks, S3 buckets, CloudWatch log groups, and Lambda functions
-directly into Neovim buffers — letting you browse, filter, delete, and tail
-logs using the same motions and keybindings you already know.
+CloudFormation stacks, S3 buckets, CloudWatch log groups, Lambda functions,
+and ACM certificates directly into Neovim buffers — letting you browse,
+filter, delete, and tail logs using the same motions and keybindings you
+already know.
 
 All AWS CLI calls run asynchronously, so the editor never blocks. Output lands
 in standard `nofile` buffers, which means `/` search, `gg`/`G`, yank, and
@@ -14,6 +15,7 @@ Supported services:
 - Aws Cloudwatch
 - Aws S3
 - Aws Lambda
+- Aws ACM (Certificate Manager)
 
 ## Screenshots
 
@@ -121,6 +123,14 @@ require("aws").setup({
       clear_filter = "C",      -- clear active filter
       refresh      = "R",      -- re-fetch from AWS
       detail_logs  = "L",      -- open CW log streams from the detail buffer
+    },
+    acm = {
+      open_detail    = "<CR>",   -- open detail view for certificate under cursor
+      delete         = "dd",     -- delete certificate under cursor
+      filter         = "F",      -- prompt to filter certificates by domain
+      clear_filter   = "C",      -- clear active filter
+      refresh        = "R",      -- re-fetch from AWS
+      detail_refresh = "R",      -- refresh the detail view
     },
   },
 })
@@ -341,6 +351,60 @@ All keys are configurable via `setup()` (see above).
 
 ---
 
+## ACM (Certificate Manager)
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `:AwsACM list` | Open the certificates list (default when no sub-command given) |
+| `:AwsACM detail <arn>` | Open the detail view for a specific certificate |
+| `:AwsACM delete <arn>` | Delete a certificate (with confirmation) |
+| `:AwsACM --region <r>` | Open certificates in a specific region |
+| `:AwsACM --profile <p>` | Open certificates with a specific profile |
+
+### Certificates buffer (`filetype=aws-acm`)
+
+| Default key | Action |
+|---|---|
+| `<CR>` | Open detail view for the certificate under cursor (vertical split) |
+| `dd` | Delete the certificate under cursor (asks for confirmation) |
+| `F` | Filter certificates by domain name (client-side, no extra API calls) |
+| `C` | Clear active filter |
+| `R` | Refresh the list |
+
+The list shows each certificate's domain name, status (with icon), type
+(`AMAZON_ISSUED` / `IMPORTED`), and expiry date. All certificate statuses are
+shown by default (including `PENDING_VALIDATION`, `EXPIRED`, `REVOKED`, etc.).
+All pages are fetched automatically via `NextToken` pagination and rendered
+incrementally as they arrive.
+
+Visual-mode `dd` over a range of lines deletes all selected certificates in
+sequence after a single confirmation prompt.
+
+### Detail buffer (`filetype=aws-acm`)
+
+Opened in a vertical split from the certificates buffer with `<CR>`. Fetches
+full certificate data via `acm describe-certificate` and displays:
+
+- **Identifiers:** full ARN and certificate ID
+- **General:** domain, type, status (with icon), key algorithm, creation /
+  issuance / expiry dates, renewal eligibility
+- **Certificate Details:** subject, issuer, serial number
+- **Subject Alternative Names (SANs):** one per line
+- **Domain Validation:** per-domain method, validation status, and DNS CNAME
+  record (name + value) — useful for copying into your DNS provider
+- **In Use By:** ARNs of load balancers, CloudFront distributions, or other
+  resources that reference this certificate
+
+| Default key | Action |
+|---|---|
+| `R` | Refresh the certificate detail |
+
+All keys are configurable via `setup()` (see above).
+
+---
+
 ## Architecture
 
 ```
@@ -370,11 +434,16 @@ aws.nvim/
     │   ├── streams.lua             # Log streams viewer (vertical split)
     │   ├── logs.lua                # Log events viewer (vertical split)
     │   └── delete.lua              # Async log group deletion with confirmation
-    └── lambda/
-        ├── init.lua                # Lambda public surface
-        ├── functions.lua           # List, filter, and render functions (paginated)
-        ├── detail.lua              # Function detail viewer (vertical split)
-        └── delete.lua              # Async function deletion with confirmation
+    ├── lambda/
+    │   ├── init.lua                # Lambda public surface
+    │   ├── functions.lua           # List, filter, and render functions (paginated)
+    │   ├── detail.lua              # Function detail viewer (vertical split)
+    │   └── delete.lua              # Async function deletion with confirmation
+    └── acm/
+        ├── init.lua                # ACM public surface
+        ├── certificates.lua        # List, filter, and render certificates (paginated)
+        ├── detail.lua              # Certificate detail viewer (vertical split)
+        └── delete.lua              # Async certificate deletion with confirmation
 ```
 
 All CLI calls are asynchronous (`vim.loop.spawn`); the editor never blocks
