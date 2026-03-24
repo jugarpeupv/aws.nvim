@@ -9,6 +9,12 @@ All AWS CLI calls run asynchronously, so the editor never blocks. Output lands
 in standard `nofile` buffers, which means `/` search, `gg`/`G`, yank, and
 every other built-in motion work out of the box.
 
+Supported services:
+- Aws Cloudformation
+- Aws Cloudwatch
+- Aws S3
+- Aws Lambda
+
 ## Screenshots
 
 ### CloudFormation
