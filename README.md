@@ -10,6 +10,35 @@ All AWS CLI calls run asynchronously, so the editor never blocks. Output lands
 in standard `nofile` buffers, which means `/` search, `gg`/`G`, yank, and
 every other built-in motion work out of the box.
 
+## Service Picker
+
+Instead of remembering a separate command per service, use `:AwsPicker` to open
+a fuzzy finder showing all supported services. Select one to open its list
+buffer immediately.
+
+```
+:AwsPicker
+:AwsPicker --region eu-west-1
+:AwsPicker --profile prod
+:AwsPicker --profile prod --region us-east-1
+```
+
+The picker automatically uses the best available backend:
+
+| Priority | Backend | Requirement |
+|---|---|---|
+| 1 | snacks.nvim | `folke/snacks.nvim` loaded |
+| 2 | Telescope | `nvim-telescope/telescope.nvim` loaded |
+| 3 | `vim.ui.select` | always available (works with `dressing.nvim`, `fzf-lua`, etc.) |
+
+**Recommended keymap** (add to your config):
+
+```lua
+vim.keymap.set("n", "<leader>aa", "<cmd>AwsPicker<cr>", { desc = "AWS service picker" })
+-- or with a fixed profile/region:
+vim.keymap.set("n", "<leader>ap", "<cmd>AwsPicker --profile prod<cr>", { desc = "AWS picker (prod)" })
+```
+
 Supported services:
 - Aws Cloudformation
 - Aws Cloudwatch
@@ -19,6 +48,7 @@ Supported services:
 - Aws Secrets Manager
 - Aws CloudFront
 - Aws API Gateway
+- Aws ECS / Fargate
 
 ## Screenshots
 
@@ -160,6 +190,13 @@ require("aws").setup({
       refresh        = "R",    -- re-fetch from AWS
       detail_refresh = "R",    -- refresh the detail view
     },
+    ecs = {
+      open_detail    = "<CR>", -- open detail view for cluster under cursor
+      filter         = "F",    -- prompt to filter clusters by name
+      clear_filter   = "C",    -- clear active filter
+      refresh        = "R",    -- re-fetch from AWS
+      detail_refresh = "R",    -- refresh the detail view
+    },
   },
 })
 ```
@@ -179,6 +216,9 @@ invocation. The flags can appear anywhere in the argument list.
 ```
 
 Tab-completion is available for both flags and sub-commands.
+
+`:AwsPicker` accepts `--region` and `--profile` too — the selected service
+opens with those overrides applied.
 
 ---
 
@@ -614,6 +654,53 @@ All keys are configurable via `setup()` (see above).
 
 ---
 
+## ECS / Fargate
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `:AwsECS list` | Open the clusters list (default when no sub-command given) |
+| `:AwsECS detail <arn>` | Open the detail view for a specific cluster |
+| `:AwsECS --region <r>` | Open clusters in a specific region |
+| `:AwsECS --profile <p>` | Open clusters with a specific profile |
+
+### Clusters buffer (`filetype=aws-ecs`)
+
+| Default key | Action |
+|---|---|
+| `<CR>` | Open detail view for the cluster under cursor (vertical split) |
+| `F` | Filter clusters by name (client-side, no extra API calls) |
+| `C` | Clear active filter |
+| `R` | Refresh the list |
+
+The list shows each cluster's name, status, registered instance count, running
+and pending task counts, active service count. All clusters are fetched via
+`ecs list-clusters` pagination and then described in a single
+`ecs describe-clusters` call with `STATISTICS` included.
+
+### Detail buffer (`filetype=aws-ecs`)
+
+Opened in a vertical split from the clusters buffer with `<CR>`. Fires two
+parallel operations (`describe-clusters` for metadata and
+`list-services` + `describe-services` for all services) and renders:
+
+- **Cluster:** name, ARN, status, registered instances, running/pending tasks,
+  active services, capacity providers, default capacity provider strategy, tags,
+  and cluster statistics
+- **Services:** tabular list sorted by name — service name, status, launch type
+  (EC2 / FARGATE / CAP_PROV), desired / running / pending task counts, and task
+  definition name. Active rollout deployments are shown as sub-lines.
+  The three most recent service events are included per service.
+
+| Default key | Action |
+|---|---|
+| `R` | Refresh the cluster detail (re-fires all calls in parallel) |
+
+All keys are configurable via `setup()` (see above).
+
+---
+
 ## Architecture
 
 ```
@@ -667,6 +754,11 @@ aws.nvim/
         ├── init.lua                # API Gateway public surface
         ├── apis.lua                # List, filter, and render REST APIs (paginated)
         └── detail.lua              # REST API detail viewer (parallel fetch, vertical split)
+    └── ecs/
+        ├── init.lua                # ECS public surface
+        ├── clusters.lua            # List, filter, and render clusters (paginated)
+        └── detail.lua              # Cluster detail viewer (services + tasks, parallel fetch)
+    picker.lua                      # Service picker (snacks > telescope > vim.ui.select)
 ```
 
 All CLI calls are asynchronous (`vim.loop.spawn`); the editor never blocks

@@ -31,4 +31,13 @@ M.cloudfront = require("aws.cloudfront")
 --- API Gateway operations.
 M.apigateway = require("aws.apigateway")
 
+--- ECS (Elastic Container Service) / Fargate operations.
+M.ecs = require("aws.ecs")
+
+--- Open the service picker (snacks.nvim > telescope.nvim > vim.ui.select).
+---@param call_opts AwsCallOpts|nil
+function M.pick(call_opts)
+  require("aws.picker").open(call_opts)
+end
+
 return M

@@ -87,6 +87,15 @@ local M = {}
 ---@field refresh        string|false  re-fetch from AWS
 ---@field detail_refresh string|false  refresh the detail view
 
+---@class AwsKeymapsECS
+--- Keymaps active inside ECS buffers.
+--- Set any key to false to disable it.
+---@field open_detail    string|false  open detail view for cluster under cursor
+---@field filter         string|false  prompt to filter clusters by name
+---@field clear_filter   string|false  clear active filter
+---@field refresh        string|false  re-fetch from AWS
+---@field detail_refresh string|false  refresh the detail view
+
 ---@class AwsKeymaps
 ---@field cloudformation AwsKeymapsCF
 ---@field s3             AwsKeymapsS3
@@ -96,6 +105,7 @@ local M = {}
 ---@field secretsmanager AwsKeymapsSecretsManager
 ---@field cloudfront     AwsKeymapsCloudFront
 ---@field apigateway     AwsKeymapsApiGateway
+---@field ecs            AwsKeymapsECS
 
 ---@class AwsIcons
 ---@field stack       string
@@ -193,6 +203,13 @@ local defaults = {
       detail_invalidate = "I",
     },
     apigateway = {
+      open_detail    = "<CR>",
+      filter         = "F",
+      clear_filter   = "C",
+      refresh        = "R",
+      detail_refresh = "R",
+    },
+    ecs = {
       open_detail    = "<CR>",
       filter         = "F",
       clear_filter   = "C",

@@ -255,4 +255,25 @@ function M.apply_apigateway_detail(buf, actions)
   map(buf, km.detail_refresh, actions.refresh, "refresh REST API detail")
 end
 
+--- Apply ECS clusters-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_ecs(buf, actions)
+  local km = require("aws.config").values.keymaps.ecs
+
+  map(buf, km.open_detail,  actions.open_detail,  "open ECS cluster detail")
+  map(buf, km.filter,       actions.filter,        "filter clusters")
+  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
+  map(buf, km.refresh,      actions.refresh,       "refresh clusters")
+end
+
+--- Apply ECS cluster detail-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_ecs_detail(buf, actions)
+  local km = require("aws.config").values.keymaps.ecs
+
+  map(buf, km.detail_refresh, actions.refresh, "refresh ECS cluster detail")
+end
+
 return M
