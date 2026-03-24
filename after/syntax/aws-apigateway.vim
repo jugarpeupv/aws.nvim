@@ -28,15 +28,6 @@ syntax match AwsAgwSection     /^ID\s\+Name.*/
 " ── Endpoint types ────────────────────────────────────────────────────────────
 syntax match AwsAgwEndpoint    /\<\(REGIONAL\|EDGE\|PRIVATE\)\>/
 
-" ── Integration types ─────────────────────────────────────────────────────────
-syntax match AwsAgwIntType     /integration:\s*\zs[A-Z_]\{1,16\}/
-
-" ── HTTP methods ──────────────────────────────────────────────────────────────
-syntax match AwsAgwMethod      /\<\(GET\|POST\|PUT\|PATCH\|DELETE\|HEAD\|OPTIONS\|ANY\)\>/
-
-" ── Dates (YYYY-MM-DD) ────────────────────────────────────────────────────────
-syntax match AwsAgwDate        /\d\{4}-\d\{2}-\d\{2}/
-
 " ── ARNs ──────────────────────────────────────────────────────────────────────
 syntax match AwsAgwArn         /arn:aws[^ ]*/
 
@@ -48,9 +39,6 @@ highlight default link AwsAgwLoading   WarningMsg
 highlight default link AwsAgwBadge     SpecialComment
 highlight default link AwsAgwSection   Statement
 highlight default link AwsAgwEndpoint  Identifier
-highlight default link AwsAgwIntType   Type
-highlight default link AwsAgwMethod    Keyword
-highlight default link AwsAgwDate      Constant
 highlight default link AwsAgwArn       Comment
 
 let b:current_syntax = "aws-apigateway"

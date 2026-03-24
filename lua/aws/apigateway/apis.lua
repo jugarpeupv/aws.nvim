@@ -38,32 +38,13 @@ local function pad_right(s, width)
   return s .. string.rep(" ", width - display_len)
 end
 
---- Truncate a string to at most `max` display columns, appending "…" if cut.
----@param s   string
----@param max integer
----@return string
-local function truncate(s, max)
-  if vim.fn.strdisplaywidth(s) <= max then return s end
-  local result = ""
-  local cols   = 0
-  local nchars = vim.fn.strchars(s)
-  for i = 0, nchars - 1 do
-    local ch = vim.fn.strcharpart(s, i, 1)
-    local w  = vim.fn.strdisplaywidth(ch)
-    if cols + w > max - 1 then break end
-    result = result .. ch
-    cols   = cols + w
-  end
-  return result .. "…"
-end
-
---- Format an epoch date number to a readable date string.
----@param value number|nil
+--- Return the creation date as-is from the API response.
+---@param value number|string|nil
 ---@return string
 local function fmt_date(value)
   if not value then return "—" end
   if type(value) == "number" then
-    return os.date("%Y-%m-%d", math.floor(value))
+    return os.date("%Y-%m-%dT%H:%M:%S", math.floor(value))
   end
   return tostring(value)
 end
@@ -112,11 +93,10 @@ end
 ---@param buf integer
 ---@param st  AgwApisState
 local function render(buf, st)
-  local DESC_MAX    = 48
   local id_width       = 2    -- "ID"
   local name_width     = 4    -- "Name"
   local endpoint_width = 8    -- "Endpoint"
-  local date_width     = 10   -- "YYYY-MM-DD"
+  local date_width     = 25   -- "YYYY-MM-DDTHH:MM:SS+HH:MM"
 
   -- First pass: measure column widths for visible rows
   for _, item in ipairs(st.items) do
@@ -154,7 +134,7 @@ local function render(buf, st)
     local name     = item.name or ""
     local endpoint = fmt_endpoint_type(item)
     local created  = fmt_date(item.createdDate)
-    local desc     = truncate(item.description or "—", DESC_MAX)
+    local desc     = item.description or "—"
 
     if st.filter == "" or id:lower():find(st.filter:lower(), 1, true)
       or name:lower():find(st.filter:lower(), 1, true) then
