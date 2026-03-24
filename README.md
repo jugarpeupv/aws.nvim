@@ -16,6 +16,7 @@ Supported services:
 - Aws S3
 - Aws Lambda
 - Aws ACM (Certificate Manager)
+- Aws Secrets Manager
 
 ## Screenshots
 
@@ -131,6 +132,15 @@ require("aws").setup({
       clear_filter   = "C",      -- clear active filter
       refresh        = "R",      -- re-fetch from AWS
       detail_refresh = "R",      -- refresh the detail view
+    },
+    secretsmanager = {
+      open_detail    = "<CR>",   -- open detail view for secret under cursor
+      delete         = "dd",     -- delete secret under cursor (no recovery window)
+      filter         = "F",      -- prompt to filter secrets by name
+      clear_filter   = "C",      -- clear active filter
+      refresh        = "R",      -- re-fetch from AWS
+      detail_refresh = "R",      -- refresh the detail view
+      reveal         = "gS",     -- toggle reveal/hide secret value in detail view
     },
   },
 })
@@ -405,6 +415,77 @@ All keys are configurable via `setup()` (see above).
 
 ---
 
+## Secrets Manager
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `:AwsSM list` | Open the secrets list (default when no sub-command given) |
+| `:AwsSM detail <name>` | Open the detail view for a specific secret |
+| `:AwsSM delete <name>` | Delete a secret immediately (no 30-day recovery window) |
+| `:AwsSM --region <r>` | Open secrets in a specific region |
+| `:AwsSM --profile <p>` | Open secrets with a specific profile |
+
+### Secrets buffer (`filetype=aws-secretsmanager`)
+
+| Default key | Action |
+|---|---|
+| `<CR>` | Open detail view for the secret under cursor (vertical split) |
+| `dd` | Delete the secret under cursor (asks for confirmation; **permanent**, no recovery window) |
+| `F` | Filter secrets by name (client-side, no extra API calls) |
+| `C` | Clear active filter |
+| `R` | Refresh the list |
+
+The list shows each secret's name, description (truncated), last changed date,
+and last rotated date. All pages are fetched automatically via `NextToken`
+pagination and rendered incrementally as they arrive.
+
+Visual-mode `dd` over a range of lines deletes all selected secrets in sequence
+after a single confirmation prompt.
+
+> **Warning:** deletion uses `--force-delete-without-recovery`. The secret is
+> destroyed immediately with no 30-day recovery window. The confirmation prompt
+> makes this explicit.
+
+### Detail buffer (`filetype=aws-secretsmanager`)
+
+Opened in a vertical split from the secrets buffer with `<CR>`. Fetches full
+secret metadata via `secretsmanager describe-secret` and displays:
+
+- **Identifiers:** full ARN and name
+- **General:** description, created date, last changed, last accessed, last rotated
+- **Rotation:** rotation enabled (yes/no), Lambda ARN (if configured), auto-rotate
+  interval in days
+- **Tags:** key → value table (when any tags are present)
+- **Versions:** version IDs with their staging labels (`AWSCURRENT`, `AWSPREVIOUS`, etc.)
+
+| Default key | Action |
+|---|---|
+| `R` | Refresh the secret detail |
+| `gS` | Toggle reveal / hide the secret value |
+
+All keys are configurable via `setup()` (see above).
+
+The **Secret Value** section is always present at the bottom of the detail
+buffer. While hidden it shows a hint line. Pressing `gS` calls
+`secretsmanager get-secret-value` and injects the result inline:
+
+- **JSON object secrets** are pretty-printed as `key = value` lines, one per
+  key, sorted alphabetically — easy to read and yank individual values with
+  standard Neovim motions.
+- **Plain string secrets** are displayed as-is (multi-line secrets are
+  indented).
+- **Binary secrets** show a note that they cannot be displayed as text.
+- **Access denied** or any other CLI error is shown inline so you can see the
+  exact AWS error message without leaving the buffer.
+
+The fetched value is cached for the lifetime of the buffer — toggling hide/show
+after the first reveal does not make a second network call. Press `R` (refresh)
+to clear the cache and re-fetch both the metadata and the secret value.
+
+---
+
 ## Architecture
 
 ```
@@ -444,6 +525,11 @@ aws.nvim/
         ├── certificates.lua        # List, filter, and render certificates (paginated)
         ├── detail.lua              # Certificate detail viewer (vertical split)
         └── delete.lua              # Async certificate deletion with confirmation
+    └── secretsmanager/
+        ├── init.lua                # Secrets Manager public surface
+        ├── secrets.lua             # List, filter, and render secrets (paginated)
+        ├── detail.lua              # Secret detail viewer (vertical split)
+        └── delete.lua              # Async secret deletion with confirmation (no recovery window)
 ```
 
 All CLI calls are asynchronous (`vim.loop.spawn`); the editor never blocks

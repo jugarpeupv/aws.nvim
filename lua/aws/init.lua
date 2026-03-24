@@ -22,4 +22,7 @@ M.lambda = require("aws.lambda")
 --- ACM (Certificate Manager) operations.
 M.acm = require("aws.acm")
 
+--- Secrets Manager operations.
+M.secretsmanager = require("aws.secretsmanager")
+
 return M

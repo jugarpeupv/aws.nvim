@@ -56,12 +56,24 @@ local M = {}
 ---@field refresh        string|false  re-fetch from AWS
 ---@field detail_refresh string|false  refresh the detail view
 
+---@class AwsKeymapsSecretsManager
+--- Keymaps active inside Secrets Manager buffers.
+--- Set any key to false to disable it.
+---@field open_detail    string|false  open detail view for secret under cursor
+---@field delete         string|false  delete secret under cursor
+---@field filter         string|false  prompt to filter secrets by name
+---@field clear_filter   string|false  clear active filter
+---@field refresh        string|false  re-fetch from AWS
+---@field detail_refresh string|false  refresh the detail view
+---@field reveal         string|false  toggle reveal/hide secret value in detail view
+
 ---@class AwsKeymaps
 ---@field cloudformation AwsKeymapsCF
 ---@field s3             AwsKeymapsS3
 ---@field cloudwatch     AwsKeymapsCW
 ---@field lambda         AwsKeymapsLambda
 ---@field acm            AwsKeymapsACM
+---@field secretsmanager AwsKeymapsSecretsManager
 
 ---@class AwsIcons
 ---@field stack       string
@@ -139,6 +151,15 @@ local defaults = {
       clear_filter   = "C",
       refresh        = "R",
       detail_refresh = "R",
+    },
+    secretsmanager = {
+      open_detail    = "<CR>",
+      delete         = "dd",
+      filter         = "F",
+      clear_filter   = "C",
+      refresh        = "R",
+      detail_refresh = "R",
+      reveal         = "gS",
     },
   },
 }

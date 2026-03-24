@@ -186,4 +186,29 @@ function M.apply_acm_detail(buf, actions)
   map(buf, km.detail_refresh, actions.refresh, "refresh certificate detail")
 end
 
+--- Apply Secrets Manager secrets-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_secretsmanager(buf, actions)
+  local km = require("aws.config").values.keymaps.secretsmanager
+
+  map(buf, km.open_detail,  actions.open_detail,  "open secret detail")
+  map(buf, km.delete,       actions.delete,        "delete secret")
+  map(buf, km.filter,       actions.filter,        "filter secrets")
+  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
+  map(buf, km.refresh,      actions.refresh,       "refresh secrets")
+  -- Visual-mode delete
+  vmap(buf, km.delete, actions.delete_visual, "delete selected secrets")
+end
+
+--- Apply Secrets Manager secret detail-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_secretsmanager_detail(buf, actions)
+  local km = require("aws.config").values.keymaps.secretsmanager
+
+  map(buf, km.detail_refresh, actions.refresh, "refresh secret detail")
+  map(buf, km.reveal,         actions.reveal,  "toggle reveal secret value")
+end
+
 return M

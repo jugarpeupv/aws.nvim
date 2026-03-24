@@ -360,3 +360,64 @@ end, {
     return {}
   end,
 })
+
+-------------------------------------------------------------------------------
+-- :AwsSM [--region <r>] [--profile <p>] [subcommand [name]]
+-------------------------------------------------------------------------------
+
+vim.api.nvim_create_user_command("AwsSM", function(opts)
+  local args, call_opts = parse_flags(opts.fargs)
+  local sub  = args[1] or "list"
+  local name = args[2]
+
+  if sub == "list" or sub == "ls" then
+    aws.secretsmanager.list_secrets(call_opts)
+
+  elseif sub == "detail" then
+    if not name or name == "" then
+      vim.notify("Usage: :AwsSM detail <secret-name>", vim.log.levels.WARN)
+      return
+    end
+    aws.secretsmanager.open_detail(name, call_opts)
+
+  elseif sub == "delete" or sub == "del" then
+    if not name or name == "" then
+      vim.notify("Usage: :AwsSM delete <secret-name>", vim.log.levels.WARN)
+      return
+    end
+    aws.secretsmanager.delete_secret(name, nil, call_opts)
+
+  else
+    vim.notify(
+      "aws.nvim: unknown sub-command '" .. sub .. "'\n"
+        .. "Available: list, detail <name>, delete <name>",
+      vim.log.levels.WARN
+    )
+  end
+end, {
+  nargs = "*",
+  desc  = "aws.nvim: Secrets Manager operations",
+  complete = function(arglead, cmdline, _)
+    if arglead:sub(1, 1) == "-" then
+      local flags = { "--region", "--profile" }
+      local out = {}
+      for _, f in ipairs(flags) do
+        if f:find(arglead, 1, true) == 1 then table.insert(out, f) end
+      end
+      return out
+    end
+    local parts = vim.split(cmdline, "%s+", { trimempty = true })
+    local positional_count = 0
+    for _, p in ipairs(parts) do
+      if p:sub(1, 1) ~= "-" then positional_count = positional_count + 1 end
+    end
+    if positional_count <= 1 or (positional_count == 2 and not cmdline:match("%s$")) then
+      local out = {}
+      for _, s in ipairs({ "list", "detail", "delete" }) do
+        if s:find(arglead, 1, true) == 1 then table.insert(out, s) end
+      end
+      return out
+    end
+    return {}
+  end,
+})
