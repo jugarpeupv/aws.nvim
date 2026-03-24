@@ -25,4 +25,7 @@ M.acm = require("aws.acm")
 --- Secrets Manager operations.
 M.secretsmanager = require("aws.secretsmanager")
 
+--- CloudFront operations.
+M.cloudfront = require("aws.cloudfront")
+
 return M

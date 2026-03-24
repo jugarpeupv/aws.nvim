@@ -17,6 +17,7 @@ Supported services:
 - Aws Lambda
 - Aws ACM (Certificate Manager)
 - Aws Secrets Manager
+- Aws CloudFront
 
 ## Screenshots
 
@@ -141,6 +142,15 @@ require("aws").setup({
       refresh        = "R",      -- re-fetch from AWS
       detail_refresh = "R",      -- refresh the detail view
       reveal         = "gS",     -- toggle reveal/hide secret value in detail view
+    },
+    cloudfront = {
+      open_detail       = "<CR>", -- open detail view for distribution under cursor
+      invalidate        = "I",    -- prompt to create a cache invalidation
+      filter            = "F",    -- prompt to filter distributions
+      clear_filter      = "C",    -- clear active filter
+      refresh           = "R",    -- re-fetch from AWS
+      detail_refresh    = "R",    -- refresh the detail view
+      detail_invalidate = "I",    -- create a cache invalidation from detail buffer
     },
   },
 })
@@ -486,6 +496,68 @@ to clear the cache and re-fetch both the metadata and the secret value.
 
 ---
 
+## CloudFront
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `:AwsCFront list` | Open the distributions list (default when no sub-command given) |
+| `:AwsCFront detail <id>` | Open the detail view for a specific distribution |
+| `:AwsCFront invalidate <id>` | Prompt for an invalidation path and create a cache invalidation |
+| `:AwsCFront --region <r>` | Open distributions in a specific region |
+| `:AwsCFront --profile <p>` | Open distributions with a specific profile |
+
+### Distributions buffer (`filetype=aws-cloudfront`)
+
+| Default key | Action |
+|---|---|
+| `<CR>` | Open detail view for the distribution under cursor (vertical split) |
+| `I` | Prompt for a path and create a cache invalidation |
+| `F` | Filter distributions by ID or domain name (client-side, no extra API calls) |
+| `C` | Clear active filter |
+| `R` | Refresh the list |
+
+The list shows each distribution's ID, domain name, enabled status, first alias
+(plus count of additional aliases), and comment. All pages are fetched
+automatically via `Marker`/`NextMarker` pagination and rendered incrementally.
+
+> **Note:** CloudFront is a global service. The `--region` flag still applies
+> for authentication context (e.g. when using profiles tied to a specific
+> region) but the API itself returns all distributions regardless of region.
+
+### Detail buffer (`filetype=aws-cloudfront`)
+
+Opened in a vertical split from the distributions buffer with `<CR>`. Fetches
+the full distribution configuration via `cloudfront get-distribution` and
+displays:
+
+- **General:** distribution ID, domain name, deploy status, enabled, comment,
+  HTTP version, price class, last modified date
+- **Aliases (CNAMEs):** all configured alternate domain names
+- **Origins:** one sub-block per origin — ID, domain, type (S3 / Custom),
+  path prefix; for Custom origins: HTTP/HTTPS port, protocol policy, SSL protocols
+- **Default Cache Behaviour:** target origin, viewer protocol policy, allowed
+  and cached methods, default/min/max TTLs, compress flag
+- **Cache Behaviours:** additional path patterns with their target origin,
+  viewer protocol policy, and default TTL
+- **SSL / Viewer Certificate:** certificate source (CloudFront default, ACM,
+  or IAM), ACM ARN (when applicable), minimum protocol version, SSL support
+  method
+
+| Default key | Action |
+|---|---|
+| `R` | Refresh the distribution detail |
+| `I` | Prompt for a path and create a cache invalidation |
+
+Invalidation results are shown as Neovim notifications (not injected into the
+buffer). The default path is `/*` — edit to invalidate specific files or
+prefixes.
+
+All keys are configurable via `setup()` (see above).
+
+---
+
 ## Architecture
 
 ```
@@ -530,6 +602,11 @@ aws.nvim/
         ├── secrets.lua             # List, filter, and render secrets (paginated)
         ├── detail.lua              # Secret detail viewer (vertical split)
         └── delete.lua              # Async secret deletion with confirmation (no recovery window)
+    └── cloudfront/
+        ├── init.lua                # CloudFront public surface
+        ├── distributions.lua       # List, filter, and render distributions (paginated)
+        ├── detail.lua              # Distribution detail viewer (vertical split)
+        └── invalidate.lua          # Async cache invalidation with path prompt
 ```
 
 All CLI calls are asynchronous (`vim.loop.spawn`); the editor never blocks

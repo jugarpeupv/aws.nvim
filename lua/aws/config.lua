@@ -67,6 +67,17 @@ local M = {}
 ---@field detail_refresh string|false  refresh the detail view
 ---@field reveal         string|false  toggle reveal/hide secret value in detail view
 
+---@class AwsKeymapsCloudFront
+--- Keymaps active inside CloudFront buffers.
+--- Set any key to false to disable it.
+---@field open_detail         string|false  open detail view for distribution under cursor
+---@field invalidate          string|false  prompt to create a cache invalidation
+---@field filter              string|false  prompt to filter distributions
+---@field clear_filter        string|false  clear active filter
+---@field refresh             string|false  re-fetch from AWS
+---@field detail_refresh      string|false  refresh the detail view
+---@field detail_invalidate   string|false  create a cache invalidation from detail buffer
+
 ---@class AwsKeymaps
 ---@field cloudformation AwsKeymapsCF
 ---@field s3             AwsKeymapsS3
@@ -74,6 +85,7 @@ local M = {}
 ---@field lambda         AwsKeymapsLambda
 ---@field acm            AwsKeymapsACM
 ---@field secretsmanager AwsKeymapsSecretsManager
+---@field cloudfront     AwsKeymapsCloudFront
 
 ---@class AwsIcons
 ---@field stack       string
@@ -160,6 +172,15 @@ local defaults = {
       refresh        = "R",
       detail_refresh = "R",
       reveal         = "gS",
+    },
+    cloudfront = {
+      open_detail       = "<CR>",
+      invalidate        = "I",
+      filter            = "F",
+      clear_filter      = "C",
+      refresh           = "R",
+      detail_refresh    = "R",
+      detail_invalidate = "I",
     },
   },
 }

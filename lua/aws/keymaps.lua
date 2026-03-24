@@ -211,4 +211,27 @@ function M.apply_secretsmanager_detail(buf, actions)
   map(buf, km.reveal,         actions.reveal,  "toggle reveal secret value")
 end
 
+--- Apply CloudFront distributions-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_cloudfront(buf, actions)
+  local km = require("aws.config").values.keymaps.cloudfront
+
+  map(buf, km.open_detail,  actions.open_detail,  "open distribution detail")
+  map(buf, km.invalidate,   actions.invalidate,    "create cache invalidation")
+  map(buf, km.filter,       actions.filter,        "filter distributions")
+  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
+  map(buf, km.refresh,      actions.refresh,       "refresh distributions")
+end
+
+--- Apply CloudFront distribution detail-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_cloudfront_detail(buf, actions)
+  local km = require("aws.config").values.keymaps.cloudfront
+
+  map(buf, km.detail_refresh,    actions.refresh,    "refresh distribution detail")
+  map(buf, km.detail_invalidate, actions.invalidate, "create cache invalidation")
+end
+
 return M
