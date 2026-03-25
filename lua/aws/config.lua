@@ -96,6 +96,17 @@ local M = {}
 ---@field refresh        string|false  re-fetch from AWS
 ---@field detail_refresh string|false  refresh the detail view
 
+---@class AwsKeymapsIAM
+--- Keymaps active inside IAM buffers (menu, list, and detail).
+--- Set any key to false to disable it.
+---@field open_list      string|false  open resource list from the menu
+---@field open_detail    string|false  open detail view for resource under cursor
+---@field filter         string|false  prompt to filter resources by name
+---@field clear_filter   string|false  clear active filter
+---@field toggle_scope   string|false  toggle policy scope between Local and All (policies list only)
+---@field refresh        string|false  re-fetch from AWS
+---@field detail_refresh string|false  refresh the detail view
+
 ---@class AwsKeymaps
 ---@field cloudformation AwsKeymapsCF
 ---@field s3             AwsKeymapsS3
@@ -106,6 +117,7 @@ local M = {}
 ---@field cloudfront     AwsKeymapsCloudFront
 ---@field apigateway     AwsKeymapsApiGateway
 ---@field ecs            AwsKeymapsECS
+---@field iam            AwsKeymapsIAM
 
 ---@class AwsIcons
 ---@field stack       string
@@ -213,6 +225,15 @@ local defaults = {
       open_detail    = "<CR>",
       filter         = "F",
       clear_filter   = "C",
+      refresh        = "R",
+      detail_refresh = "R",
+    },
+    iam = {
+      open_list      = "<CR>",
+      open_detail    = "<CR>",
+      filter         = "F",
+      clear_filter   = "C",
+      toggle_scope   = "T",
       refresh        = "R",
       detail_refresh = "R",
     },

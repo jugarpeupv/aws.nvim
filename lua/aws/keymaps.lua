@@ -276,4 +276,39 @@ function M.apply_ecs_detail(buf, actions)
   map(buf, km.detail_refresh, actions.refresh, "refresh ECS cluster detail")
 end
 
+--- Apply IAM service menu keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_iam_menu(buf, actions)
+  local km = require("aws.config").values.keymaps.iam
+
+  map(buf, km.open_list, actions.open_list, "open IAM resource list")
+  map(buf, km.refresh,   actions.refresh,   "refresh IAM menu")
+end
+
+--- Apply IAM resource list-buffer keymaps (users / groups / roles / policies / providers).
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_iam_list(buf, actions)
+  local km = require("aws.config").values.keymaps.iam
+
+  map(buf, km.open_detail,  actions.open_detail,  "open IAM resource detail")
+  map(buf, km.filter,       actions.filter,        "filter IAM resources")
+  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
+  map(buf, km.refresh,      actions.refresh,       "refresh IAM resources")
+  -- toggle_scope is only wired by policies.lua; safely no-op if nil
+  if actions.toggle_scope then
+    map(buf, km.toggle_scope, actions.toggle_scope, "toggle policy scope (Local/All)")
+  end
+end
+
+--- Apply IAM detail-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_iam_detail(buf, actions)
+  local km = require("aws.config").values.keymaps.iam
+
+  map(buf, km.detail_refresh, actions.refresh, "refresh IAM detail")
+end
+
 return M

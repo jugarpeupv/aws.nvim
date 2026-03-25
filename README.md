@@ -2,9 +2,10 @@
 
 Manage AWS resources without leaving your editor. aws.nvim brings
 CloudFormation stacks, S3 buckets, CloudWatch log groups, Lambda functions,
-and ACM certificates directly into Neovim buffers — letting you browse,
-filter, delete, and tail logs using the same motions and keybindings you
-already know.
+ACM certificates, Secrets Manager secrets, CloudFront distributions, API
+Gateway REST APIs, ECS/Fargate clusters, and IAM identities directly into
+Neovim buffers — letting you browse, filter, inspect, and delete using the
+same motions and keybindings you already know.
 
 All AWS CLI calls run asynchronously, so the editor never blocks. Output lands
 in standard `nofile` buffers, which means `/` search, `gg`/`G`, yank, and
@@ -40,15 +41,16 @@ vim.keymap.set("n", "<leader>ap", "<cmd>AwsPicker --profile prod<cr>", { desc = 
 ```
 
 Supported services:
-- Aws Cloudformation
-- Aws Cloudwatch
-- Aws S3
-- Aws Lambda
-- Aws ACM (Certificate Manager)
-- Aws Secrets Manager
-- Aws CloudFront
-- Aws API Gateway
-- Aws ECS / Fargate
+- AWS CloudFormation
+- AWS CloudWatch
+- AWS S3
+- AWS Lambda
+- AWS ACM (Certificate Manager)
+- AWS Secrets Manager
+- AWS CloudFront
+- AWS API Gateway
+- AWS ECS / Fargate
+- AWS IAM (Users, Groups, Roles, Policies, Identity Providers)
 
 ## Screenshots
 
@@ -196,6 +198,14 @@ require("aws").setup({
       clear_filter   = "C",    -- clear active filter
       refresh        = "R",    -- re-fetch from AWS
       detail_refresh = "R",    -- refresh the detail view
+    },
+    iam = {
+      open_detail    = "<CR>", -- open detail / sub-list for item under cursor
+      filter         = "F",    -- prompt to filter list by name
+      clear_filter   = "C",    -- clear active filter
+      refresh        = "R",    -- re-fetch from AWS
+      detail_refresh = "R",    -- refresh the detail view
+      toggle_scope   = "T",    -- toggle policy scope Local ↔ All (policies list only)
     },
   },
 })
@@ -701,6 +711,190 @@ All keys are configurable via `setup()` (see above).
 
 ---
 
+## IAM
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `:AwsIAM` | Open the IAM service menu (default when no sub-command given) |
+| `:AwsIAM list` | Open the IAM service menu |
+| `:AwsIAM users` | Open the users list directly |
+| `:AwsIAM groups` | Open the groups list directly |
+| `:AwsIAM roles` | Open the roles list directly |
+| `:AwsIAM policies` | Open the policies list directly |
+| `:AwsIAM providers` | Open the identity providers list directly |
+| `:AwsIAM detail user <name>` | Open the detail view for a specific user |
+| `:AwsIAM detail group <name>` | Open the detail view for a specific group |
+| `:AwsIAM detail role <name>` | Open the detail view for a specific role |
+| `:AwsIAM detail policy <arn>` | Open the detail view for a specific policy |
+| `:AwsIAM detail provider <arn> [oidc\|saml]` | Open the detail view for a specific identity provider |
+| `:AwsIAM --region <r>` | Use a specific region |
+| `:AwsIAM --profile <p>` | Use a specific profile |
+
+### Menu buffer (`filetype=aws-iam`)
+
+Opened by `:AwsIAM`. Presents a 5-item menu:
+
+```
+  1.  Users
+  2.  Groups
+  3.  Roles
+  4.  Policies
+  5.  Identity Providers
+```
+
+| Default key | Action |
+|---|---|
+| `<CR>` | Open the list for the resource type under cursor |
+
+### Users buffer (`filetype=aws-iam`)
+
+| Default key | Action |
+|---|---|
+| `<CR>` | Open detail view for the user under cursor (vertical split) |
+| `F` | Filter users by name (client-side) |
+| `C` | Clear active filter |
+| `R` | Refresh the list |
+
+The list shows each user's name, user ID, path, and creation date. All pages
+are fetched automatically via `IsTruncated`/`Marker` pagination and rendered
+incrementally.
+
+### Groups buffer (`filetype=aws-iam`)
+
+| Default key | Action |
+|---|---|
+| `<CR>` | Open detail view for the group under cursor (vertical split) |
+| `F` | Filter groups by name (client-side) |
+| `C` | Clear active filter |
+| `R` | Refresh the list |
+
+### Roles buffer (`filetype=aws-iam`)
+
+| Default key | Action |
+|---|---|
+| `<CR>` | Open detail view for the role under cursor (vertical split) |
+| `F` | Filter roles by name (client-side) |
+| `C` | Clear active filter |
+| `R` | Refresh the list |
+
+### Policies buffer (`filetype=aws-iam`)
+
+| Default key | Action |
+|---|---|
+| `<CR>` | Open detail view for the policy under cursor (vertical split) |
+| `T` | Toggle scope: `Local` (customer-managed) ↔ `All` (includes AWS-managed) |
+| `F` | Filter policies by name (client-side) |
+| `C` | Clear active filter |
+| `R` | Refresh the list |
+
+Defaults to `Local` scope (customer-managed policies only) to avoid loading
+the ~1 000+ AWS-managed policies on every open. Press `T` to include them.
+The active scope is shown as a badge in the buffer header.
+
+### Identity Providers buffer (`filetype=aws-iam`)
+
+| Default key | Action |
+|---|---|
+| `<CR>` | Open detail view for the provider under cursor (vertical split) |
+| `R` | Refresh the list |
+
+Lists both OIDC and SAML providers in a single buffer via two parallel API
+calls (`list-open-id-connect-providers` + `list-saml-providers`). Each row
+shows the provider type (OIDC / SAML) and its full ARN.
+
+### User detail buffer (`filetype=aws-iam`)
+
+Opened in a vertical split. Fires six parallel AWS CLI calls and displays:
+
+- **General:** username, user ID, ARN, path, creation date, password last used
+- **Groups:** all groups the user belongs to (name + ARN)
+- **Attached Policies:** managed policies attached directly to the user
+- **Inline Policies:** names of inline policies embedded on the user
+- **Access Keys:** key ID, status (`Active` / `Inactive`), and creation date
+- **MFA Devices:** serial number and enable date for each registered MFA device
+
+| Default key | Action |
+|---|---|
+| `R` | Refresh all sections |
+
+### Group detail buffer (`filetype=aws-iam`)
+
+Fires three parallel calls (`get-group`, `list-attached-group-policies`,
+`list-group-policies`) and displays:
+
+- **General:** group name, group ID, ARN, path, creation date
+- **Members:** usernames of all IAM users in the group
+- **Attached Policies:** managed policies attached to the group
+- **Inline Policies:** names of inline policies on the group
+
+| Default key | Action |
+|---|---|
+| `R` | Refresh all sections |
+
+### Role detail buffer (`filetype=aws-iam`)
+
+Fires three parallel calls (`get-role`, `list-attached-role-policies`,
+`list-role-policies`) and displays:
+
+- **General:** role name, role ID, ARN, path, creation date, description,
+  max session duration
+- **Trust Policy (AssumeRole):** the full `AssumeRolePolicyDocument` rendered
+  as pretty-printed, syntax-highlighted JSON
+- **Tags:** all tags attached to the role (key → value)
+- **Attached Policies:** managed policies attached to the role
+- **Inline Policies:** names of inline policies on the role
+- **Last Accessed:** per-service last-authentication timestamps and region,
+  fetched asynchronously via `generate-service-last-accessed-details` +
+  `get-service-last-accessed-details` (polls until the job completes, then
+  re-renders the section in place)
+
+| Default key | Action |
+|---|---|
+| `R` | Refresh all sections |
+
+### Policy detail buffer (`filetype=aws-iam`)
+
+Fires three parallel calls (`get-policy`, `list-policy-versions`,
+`list-entities-for-policy`) and displays:
+
+- **General:** policy name, policy ID, ARN, path, description, default version,
+  attachment count, creation and update dates
+- **Versions:** all policy versions with their version ID, creation date, and a
+  `[default]` badge on the active version
+- **Attached To:** users, groups, and roles the policy is currently attached to
+
+| Default key | Action |
+|---|---|
+| `R` | Refresh all sections |
+
+### Provider detail buffer (`filetype=aws-iam`)
+
+#### OIDC
+
+Fetches via `get-open-id-connect-provider` and displays:
+
+- **OIDC Provider:** ARN, creation date
+- **Client IDs:** all registered audience values
+- **Thumbprints:** all server certificate thumbprints
+
+#### SAML
+
+Fetches via `get-saml-provider` and displays:
+
+- **SAML Provider:** ARN, creation date, valid until date
+- **SAML Metadata Document:** first 10 lines of the XML metadata (truncated to
+  avoid filling the buffer with a large XML document)
+
+| Default key | Action |
+|---|---|
+| `R` | Refresh the provider detail |
+
+All keys are configurable via `setup()` (see above).
+
+---
+
 ## Architecture
 
 ```
@@ -712,6 +906,7 @@ aws.nvim/
     ├── spawn.lua                   # Async aws CLI runner (vim.loop / libuv)
     ├── buffer.lua                  # Buffer creation and split helpers
     ├── keymaps.lua                 # Configurable buffer-local keymap applier
+    ├── picker.lua                  # Service picker (snacks > telescope > vim.ui.select)
     ├── cloudformation/
     │   ├── init.lua                # CloudFormation public surface
     │   ├── stacks.lua              # List, filter, and render stacks
@@ -735,30 +930,43 @@ aws.nvim/
     │   ├── functions.lua           # List, filter, and render functions (paginated)
     │   ├── detail.lua              # Function detail viewer (vertical split)
     │   └── delete.lua              # Async function deletion with confirmation
-    └── acm/
-        ├── init.lua                # ACM public surface
-        ├── certificates.lua        # List, filter, and render certificates (paginated)
-        ├── detail.lua              # Certificate detail viewer (vertical split)
-        └── delete.lua              # Async certificate deletion with confirmation
-    └── secretsmanager/
-        ├── init.lua                # Secrets Manager public surface
-        ├── secrets.lua             # List, filter, and render secrets (paginated)
-        ├── detail.lua              # Secret detail viewer (vertical split)
-        └── delete.lua              # Async secret deletion with confirmation (no recovery window)
-    └── cloudfront/
-        ├── init.lua                # CloudFront public surface
-        ├── distributions.lua       # List, filter, and render distributions (paginated)
-        ├── detail.lua              # Distribution detail viewer (vertical split)
-        └── invalidate.lua          # Async cache invalidation with path prompt
-    └── apigateway/
-        ├── init.lua                # API Gateway public surface
-        ├── apis.lua                # List, filter, and render REST APIs (paginated)
-        └── detail.lua              # REST API detail viewer (parallel fetch, vertical split)
-    └── ecs/
-        ├── init.lua                # ECS public surface
-        ├── clusters.lua            # List, filter, and render clusters (paginated)
-        └── detail.lua              # Cluster detail viewer (services + tasks, parallel fetch)
-    picker.lua                      # Service picker (snacks > telescope > vim.ui.select)
+    ├── acm/
+    │   ├── init.lua                # ACM public surface
+    │   ├── certificates.lua        # List, filter, and render certificates (paginated)
+    │   ├── detail.lua              # Certificate detail viewer (vertical split)
+    │   └── delete.lua              # Async certificate deletion with confirmation
+    ├── secretsmanager/
+    │   ├── init.lua                # Secrets Manager public surface
+    │   ├── secrets.lua             # List, filter, and render secrets (paginated)
+    │   ├── detail.lua              # Secret detail viewer (vertical split)
+    │   └── delete.lua              # Async secret deletion with confirmation (no recovery window)
+    ├── cloudfront/
+    │   ├── init.lua                # CloudFront public surface
+    │   ├── distributions.lua       # List, filter, and render distributions (paginated)
+    │   ├── detail.lua              # Distribution detail viewer (vertical split)
+    │   └── invalidate.lua          # Async cache invalidation with path prompt
+    ├── apigateway/
+    │   ├── init.lua                # API Gateway public surface
+    │   ├── apis.lua                # List, filter, and render REST APIs (paginated)
+    │   └── detail.lua              # REST API detail viewer (parallel fetch, vertical split)
+    ├── ecs/
+    │   ├── init.lua                # ECS public surface
+    │   ├── clusters.lua            # List, filter, and render clusters (paginated)
+    │   └── detail.lua              # Cluster detail viewer (services + tasks, parallel fetch)
+    └── iam/
+        ├── init.lua                # IAM public surface
+        ├── menu.lua                # 5-item service menu (Users/Groups/Roles/Policies/Providers)
+        ├── users.lua               # List, filter, and render users (paginated)
+        ├── groups.lua              # List, filter, and render groups (paginated)
+        ├── roles.lua               # List, filter, and render roles (paginated)
+        ├── policies.lua            # List, filter, render policies; Local/All scope toggle
+        ├── providers.lua           # List OIDC + SAML providers (parallel fetch)
+        └── detail/
+            ├── user.lua            # User detail (6 parallel calls)
+            ├── group.lua           # Group detail (3 parallel calls)
+            ├── role.lua            # Role detail (3 parallel calls + async last-accessed job)
+            ├── policy.lua          # Policy detail (3 parallel calls)
+            └── provider.lua        # OIDC / SAML provider detail
 ```
 
 All CLI calls are asynchronous (`vim.loop.spawn`); the editor never blocks

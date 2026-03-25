@@ -592,6 +592,134 @@ end, {
 })
 
 -------------------------------------------------------------------------------
+-- :AwsIAM [--region <r>] [--profile <p>] [subcommand [arg [kind]]]
+-- subcommands: list/ls, users, groups, roles, policies, providers
+--              detail user <name>
+--              detail group <name>
+--              detail role <name>
+--              detail policy <arn>
+--              detail provider <arn> <oidc|saml>
+-------------------------------------------------------------------------------
+
+vim.api.nvim_create_user_command("AwsIAM", function(opts)
+  local args, call_opts = parse_flags(opts.fargs)
+  local sub  = args[1] or "list"
+
+  if sub == "list" or sub == "ls" then
+    aws.iam.open_menu(call_opts)
+
+  elseif sub == "users" then
+    aws.iam.list_users(call_opts)
+
+  elseif sub == "groups" then
+    aws.iam.list_groups(call_opts)
+
+  elseif sub == "roles" then
+    aws.iam.list_roles(call_opts)
+
+  elseif sub == "policies" then
+    aws.iam.list_policies(call_opts)
+
+  elseif sub == "providers" then
+    aws.iam.list_providers(call_opts)
+
+  elseif sub == "detail" then
+    local kind = args[2]
+    local name = args[3]
+    if not kind or kind == "" then
+      vim.notify(
+        "Usage: :AwsIAM detail <user|group|role|policy|provider> <name-or-arn> [oidc|saml]",
+        vim.log.levels.WARN
+      )
+      return
+    end
+    if not name or name == "" then
+      vim.notify("Usage: :AwsIAM detail " .. kind .. " <name-or-arn>", vim.log.levels.WARN)
+      return
+    end
+
+    if kind == "user" then
+      aws.iam.open_user(name, call_opts)
+    elseif kind == "group" then
+      aws.iam.open_group(name, call_opts)
+    elseif kind == "role" then
+      aws.iam.open_role(name, call_opts)
+    elseif kind == "policy" then
+      aws.iam.open_policy(name, call_opts)
+    elseif kind == "provider" then
+      local provider_kind = args[4] or "oidc"
+      aws.iam.open_provider(name, provider_kind, call_opts)
+    else
+      vim.notify(
+        "aws.nvim: unknown detail type '" .. kind .. "'\n"
+          .. "Available: user, group, role, policy, provider",
+        vim.log.levels.WARN
+      )
+    end
+
+  else
+    vim.notify(
+      "aws.nvim: unknown sub-command '" .. sub .. "'\n"
+        .. "Available: list, users, groups, roles, policies, providers, detail <type> <name>",
+      vim.log.levels.WARN
+    )
+  end
+end, {
+  nargs = "*",
+  desc  = "aws.nvim: IAM operations",
+  complete = function(arglead, cmdline, _)
+    if arglead:sub(1, 1) == "-" then
+      local out = {}
+      for _, f in ipairs({ "--region", "--profile" }) do
+        if f:find(arglead, 1, true) == 1 then table.insert(out, f) end
+      end
+      return out
+    end
+    local parts = vim.split(cmdline, "%s+", { trimempty = true })
+    local positional = {}
+    for _, p in ipairs(parts) do
+      if p:sub(1, 1) ~= "-" then table.insert(positional, p) end
+    end
+    local npos = #positional
+    local trailing_space = cmdline:match("%s$")
+
+    -- first positional: sub-command
+    if npos <= 1 or (npos == 2 and not trailing_space) then
+      local subs = { "list", "users", "groups", "roles", "policies", "providers", "detail" }
+      local out = {}
+      for _, s in ipairs(subs) do
+        if s:find(arglead, 1, true) == 1 then table.insert(out, s) end
+      end
+      return out
+    end
+
+    -- second positional (only when sub == "detail"): detail type
+    if positional[2] == "detail" then
+      if npos == 2 or (npos == 3 and not trailing_space) then
+        local types = { "user", "group", "role", "policy", "provider" }
+        local out = {}
+        for _, t in ipairs(types) do
+          if t:find(arglead, 1, true) == 1 then table.insert(out, t) end
+        end
+        return out
+      end
+      -- fourth positional (only for provider): oidc|saml
+      if positional[2] == "detail" and positional[3] == "provider" then
+        if npos == 4 or (npos == 5 and not trailing_space) then
+          local out = {}
+          for _, k in ipairs({ "oidc", "saml" }) do
+            if k:find(arglead, 1, true) == 1 then table.insert(out, k) end
+          end
+          return out
+        end
+      end
+    end
+
+    return {}
+  end,
+})
+
+-------------------------------------------------------------------------------
 -- :AwsPicker [--region <r>] [--profile <p>]
 -- Opens a fuzzy service picker (snacks > telescope > vim.ui.select).
 -------------------------------------------------------------------------------

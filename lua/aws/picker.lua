@@ -55,6 +55,11 @@ local services = {
     desc   = "Clusters — detail view (services, deployments, events)",
     action = function(co) require("aws.ecs").list_clusters(co) end,
   },
+  {
+    label  = "IAM",
+    desc   = "Users, groups, roles, policies, identity providers",
+    action = function(co) require("aws.iam").open_menu(co) end,
+  },
 }
 
 -------------------------------------------------------------------------------

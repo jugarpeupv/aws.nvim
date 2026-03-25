@@ -34,6 +34,9 @@ M.apigateway = require("aws.apigateway")
 --- ECS (Elastic Container Service) / Fargate operations.
 M.ecs = require("aws.ecs")
 
+--- IAM (Identity and Access Management) operations.
+M.iam = require("aws.iam")
+
 --- Open the service picker (snacks.nvim > telescope.nvim > vim.ui.select).
 ---@param call_opts AwsCallOpts|nil
 function M.pick(call_opts)
