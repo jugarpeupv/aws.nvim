@@ -311,4 +311,51 @@ function M.apply_iam_detail(buf, actions)
   map(buf, km.detail_refresh, actions.refresh, "refresh IAM detail")
 end
 
+--- Apply VPC list-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_vpc(buf, actions)
+  local km = require("aws.config").values.keymaps.vpc
+
+  map(buf, km.open_detail,  actions.open_detail,  "open VPC menu")
+  map(buf, km.filter,       actions.filter,        "filter VPCs")
+  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
+  map(buf, km.refresh,      actions.refresh,       "refresh VPCs")
+end
+
+--- Apply VPC section-menu keymaps (mirrors IAM menu).
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_vpc_menu(buf, actions)
+  local km = require("aws.config").values.keymaps.vpc
+
+  map(buf, km.open_detail, actions.open_detail, "open VPC section")
+  map(buf, km.refresh,     actions.refresh,     "refresh VPC menu")
+end
+
+--- Apply VPC section / detail-buffer keymaps.
+--- Used by detail.lua, section list buffers, and section detail buffers.
+--- Only wires actions that are provided (non-nil).
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_vpc_section(buf, actions)
+  local km = require("aws.config").values.keymaps.vpc
+
+  map(buf, km.detail_refresh, actions.refresh,      "refresh")
+  if actions.open_detail then
+    map(buf, km.open_detail, actions.open_detail, "open detail")
+  end
+  if actions.filter then
+    map(buf, km.filter,       actions.filter,       "filter")
+    map(buf, km.clear_filter, actions.clear_filter, "clear filter")
+  end
+end
+
+--- Apply VPC detail-buffer keymaps (kept for backwards compat; delegates to apply_vpc_section).
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_vpc_detail(buf, actions)
+  M.apply_vpc_section(buf, actions)
+end
+
 return M

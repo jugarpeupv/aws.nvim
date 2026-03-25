@@ -37,6 +37,9 @@ M.ecs = require("aws.ecs")
 --- IAM (Identity and Access Management) operations.
 M.iam = require("aws.iam")
 
+--- VPC (Virtual Private Cloud) operations.
+M.vpc = require("aws.vpc")
+
 --- Open the service picker (snacks.nvim > telescope.nvim > vim.ui.select).
 ---@param call_opts AwsCallOpts|nil
 function M.pick(call_opts)

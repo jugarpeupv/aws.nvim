@@ -60,6 +60,11 @@ local services = {
     desc   = "Users, groups, roles, policies, identity providers",
     action = function(co) require("aws.iam").open_menu(co) end,
   },
+  {
+    label  = "VPC",
+    desc   = "VPCs — subnets, gateways, route tables, security groups",
+    action = function(co) require("aws.vpc").list_vpcs(co) end,
+  },
 }
 
 -------------------------------------------------------------------------------

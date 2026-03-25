@@ -107,6 +107,15 @@ local M = {}
 ---@field refresh        string|false  re-fetch from AWS
 ---@field detail_refresh string|false  refresh the detail view
 
+---@class AwsKeymapsVPC
+--- Keymaps active inside VPC buffers (list, menu, section lists, and detail views).
+--- Set any key to false to disable it.
+---@field open_detail    string|false  open VPC menu (from list) or section/detail (from menu/section)
+---@field filter         string|false  prompt to filter (list and section list buffers)
+---@field clear_filter   string|false  clear active filter
+---@field refresh        string|false  re-fetch from AWS (list buffer)
+---@field detail_refresh string|false  refresh a menu, section, or detail buffer
+
 ---@class AwsKeymaps
 ---@field cloudformation AwsKeymapsCF
 ---@field s3             AwsKeymapsS3
@@ -118,6 +127,7 @@ local M = {}
 ---@field apigateway     AwsKeymapsApiGateway
 ---@field ecs            AwsKeymapsECS
 ---@field iam            AwsKeymapsIAM
+---@field vpc            AwsKeymapsVPC
 
 ---@class AwsIcons
 ---@field stack       string
@@ -234,6 +244,13 @@ local defaults = {
       filter         = "F",
       clear_filter   = "C",
       toggle_scope   = "T",
+      refresh        = "R",
+      detail_refresh = "R",
+    },
+    vpc = {
+      open_detail    = "<CR>",
+      filter         = "F",
+      clear_filter   = "C",
       refresh        = "R",
       detail_refresh = "R",
     },

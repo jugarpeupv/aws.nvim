@@ -3,9 +3,9 @@
 Manage AWS resources without leaving your editor. aws.nvim brings
 CloudFormation stacks, S3 buckets, CloudWatch log groups, Lambda functions,
 ACM certificates, Secrets Manager secrets, CloudFront distributions, API
-Gateway REST APIs, ECS/Fargate clusters, and IAM identities directly into
-Neovim buffers — letting you browse, filter, inspect, and delete using the
-same motions and keybindings you already know.
+Gateway REST APIs, ECS/Fargate clusters, IAM identities, and VPCs directly
+into Neovim buffers — letting you browse, filter, inspect, and delete using
+the same motions and keybindings you already know.
 
 All AWS CLI calls run asynchronously, so the editor never blocks. Output lands
 in standard `nofile` buffers, which means `/` search, `gg`/`G`, yank, and
@@ -51,6 +51,7 @@ Supported services:
 - AWS API Gateway
 - AWS ECS / Fargate
 - AWS IAM (Users, Groups, Roles, Policies, Identity Providers)
+- AWS VPC (Subnets, Internet/NAT Gateways, Route Tables, Security Groups)
 
 ## Screenshots
 
@@ -206,6 +207,14 @@ require("aws").setup({
       refresh        = "R",    -- re-fetch from AWS
       detail_refresh = "R",    -- refresh the detail view
       toggle_scope   = "T",    -- toggle policy scope Local ↔ All (policies list only)
+    },
+    vpc = {
+      open_detail    = "<CR>", -- open detail view for VPC under cursor
+      open_sg        = "<CR>", -- open security group detail from VPC detail buffer
+      filter         = "F",    -- prompt to filter VPCs by name or ID
+      clear_filter   = "C",    -- clear active filter
+      refresh        = "R",    -- re-fetch from AWS
+      detail_refresh = "R",    -- refresh the detail view
     },
   },
 })
@@ -895,6 +904,79 @@ All keys are configurable via `setup()` (see above).
 
 ---
 
+## VPC
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `:AwsVPC list` | Open the VPCs list (default when no sub-command given) |
+| `:AwsVPC detail <vpc-id>` | Open the detail view for a specific VPC |
+| `:AwsVPC --region <r>` | Open VPCs in a specific region |
+| `:AwsVPC --profile <p>` | Open VPCs with a specific profile |
+
+### VPCs buffer (`filetype=aws-vpc`)
+
+| Default key | Action |
+|---|---|
+| `<CR>` | Open detail view for the VPC under cursor (vertical split) |
+| `F` | Filter VPCs by name or VPC ID (client-side, no extra API calls) |
+| `C` | Clear active filter |
+| `R` | Refresh the list |
+
+The list shows each VPC's name, VPC ID, state, CIDR block, and whether it is the
+default VPC. All pages are fetched automatically via `NextToken` pagination and
+rendered incrementally as they arrive.
+
+### Detail buffer (`filetype=aws-vpc`)
+
+Opened in a vertical split from the VPCs buffer with `<CR>`. Fires six parallel
+AWS CLI calls and renders:
+
+- **General:** VPC ID, name tag, state, all associated CIDR blocks (primary +
+  secondary), default VPC flag, instance tenancy, owner ID, DHCP options ID
+- **Tags:** all tags attached to the VPC (sorted alphabetically; `Name` is shown
+  in General and omitted here)
+- **Subnets:** tabular list sorted by AZ then CIDR — subnet name, subnet ID,
+  CIDR, availability zone, available IP count, and whether public IPs are
+  automatically assigned on launch
+- **Internet Gateways:** IGW ID and name tag for each gateway attached to the VPC
+- **NAT Gateways:** NAT gateway ID, state, subnet ID, public IP, and private IP.
+  Gateways in `deleted` state are omitted.
+- **Route Tables:** each route table with its name/ID, associated subnet IDs
+  (or `(main)` for the main route table), and the full routes table — destination
+  (CIDR / prefix), target (IGW / NAT GW / transit GW / VPC peering /
+  network interface / instance), and route state
+- **Security Groups:** tabular list sorted by name — group ID, group name, and
+  description
+
+| Default key | Action |
+|---|---|
+| `<CR>` | Open security group detail for the group under cursor (vertical split) |
+| `R` | Refresh all sections (re-fires all six calls in parallel) |
+
+All keys are configurable via `setup()` (see above).
+
+### Security Group detail buffer (`filetype=aws-vpc`)
+
+Opened in a vertical split from the VPC detail buffer with `<CR>` on any row in
+the Security Groups section. Fetches full inbound and outbound rules via a single
+`ec2 describe-security-groups --group-ids` call and renders:
+
+- **General:** group ID, name, description, VPC ID, owner ID
+- **Tags:** all tags attached to the group (sorted alphabetically)
+- **Inbound Rules:** protocol, port range, and source for each permission (IPv4
+  CIDR, IPv6 CIDR, prefix list ID, or referenced security group)
+- **Outbound Rules:** same layout as inbound rules
+
+| Default key | Action |
+|---|---|
+| `R` | Refresh the security group detail |
+
+All keys are configurable via `setup()` (see above).
+
+---
+
 ## Architecture
 
 ```
@@ -967,6 +1049,10 @@ aws.nvim/
             ├── role.lua            # Role detail (3 parallel calls + async last-accessed job)
             ├── policy.lua          # Policy detail (3 parallel calls)
             └── provider.lua        # OIDC / SAML provider detail
+    └── vpc/
+        ├── init.lua                # VPC public surface
+        ├── vpcs.lua                # List, filter, and render VPCs (paginated)
+        └── detail.lua              # VPC detail viewer (6 parallel calls, vertical split)
 ```
 
 All CLI calls are asynchronous (`vim.loop.spawn`); the editor never blocks
