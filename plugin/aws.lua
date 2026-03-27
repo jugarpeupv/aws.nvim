@@ -774,6 +774,81 @@ end, {
 })
 
 -------------------------------------------------------------------------------
+-- :AwsDDB [--region <r>] [--profile <p>] [subcommand [table-name]]
+-- subcommands: list/ls, menu <name>, detail <name>, scan <name>, delete <name>
+-------------------------------------------------------------------------------
+
+vim.api.nvim_create_user_command("AwsDDB", function(opts)
+  local args, call_opts = parse_flags(opts.fargs)
+  local sub  = args[1] or "list"
+  local name = args[2]
+
+  if sub == "list" or sub == "ls" then
+    aws.dynamodb.list_tables(call_opts)
+
+  elseif sub == "menu" then
+    if not name or name == "" then
+      vim.notify("Usage: :AwsDDB menu <table-name>", vim.log.levels.WARN)
+      return
+    end
+    aws.dynamodb.open_menu(name, call_opts)
+
+  elseif sub == "detail" then
+    if not name or name == "" then
+      vim.notify("Usage: :AwsDDB detail <table-name>", vim.log.levels.WARN)
+      return
+    end
+    aws.dynamodb.open_detail(name, call_opts)
+
+  elseif sub == "scan" then
+    if not name or name == "" then
+      vim.notify("Usage: :AwsDDB scan <table-name>", vim.log.levels.WARN)
+      return
+    end
+    aws.dynamodb.open_scan(name, call_opts)
+
+  elseif sub == "delete" or sub == "del" then
+    if not name or name == "" then
+      vim.notify("Usage: :AwsDDB delete <table-name>", vim.log.levels.WARN)
+      return
+    end
+    aws.dynamodb.delete_table(name, nil, call_opts)
+
+  else
+    vim.notify(
+      "aws.nvim: unknown sub-command '" .. sub .. "'\n"
+        .. "Available: list, menu <name>, detail <name>, scan <name>, delete <name>",
+      vim.log.levels.WARN
+    )
+  end
+end, {
+  nargs = "*",
+  desc  = "aws.nvim: DynamoDB operations",
+  complete = function(arglead, cmdline, _)
+    if arglead:sub(1, 1) == "-" then
+      local out = {}
+      for _, f in ipairs({ "--region", "--profile" }) do
+        if f:find(arglead, 1, true) == 1 then table.insert(out, f) end
+      end
+      return out
+    end
+    local parts = vim.split(cmdline, "%s+", { trimempty = true })
+    local positional_count = 0
+    for _, p in ipairs(parts) do
+      if p:sub(1, 1) ~= "-" then positional_count = positional_count + 1 end
+    end
+    if positional_count <= 1 or (positional_count == 2 and not cmdline:match("%s$")) then
+      local out = {}
+      for _, s in ipairs({ "list", "menu", "detail", "scan", "delete" }) do
+        if s:find(arglead, 1, true) == 1 then table.insert(out, s) end
+      end
+      return out
+    end
+    return {}
+  end,
+})
+
+-------------------------------------------------------------------------------
 -- :AwsPicker [--region <r>] [--profile <p>]
 -- Opens a fuzzy service picker (snacks > telescope > vim.ui.select).
 -------------------------------------------------------------------------------

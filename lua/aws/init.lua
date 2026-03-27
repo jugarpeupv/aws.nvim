@@ -40,6 +40,9 @@ M.iam = require("aws.iam")
 --- VPC (Virtual Private Cloud) operations.
 M.vpc = require("aws.vpc")
 
+--- DynamoDB operations.
+M.dynamodb = require("aws.dynamodb")
+
 --- Open the service picker (snacks.nvim > telescope.nvim > vim.ui.select).
 ---@param call_opts AwsCallOpts|nil
 function M.pick(call_opts)

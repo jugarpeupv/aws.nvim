@@ -65,6 +65,11 @@ local services = {
     desc   = "VPCs — subnets, gateways, route tables, security groups",
     action = function(co) require("aws.vpc").list_vpcs(co) end,
   },
+  {
+    label  = "DynamoDB",
+    desc   = "Tables — scan, query, detail view, delete",
+    action = function(co) require("aws.dynamodb").list_tables(co) end,
+  },
 }
 
 -------------------------------------------------------------------------------

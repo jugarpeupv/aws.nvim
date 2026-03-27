@@ -358,4 +358,48 @@ function M.apply_vpc_detail(buf, actions)
   M.apply_vpc_section(buf, actions)
 end
 
+--- Apply DynamoDB tables list-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_dynamodb(buf, actions)
+  local km = require("aws.config").values.keymaps.dynamodb
+
+  map(buf, km.open_menu,    actions.open_menu,    "open DynamoDB table menu")
+  map(buf, km.delete,       actions.delete,        "delete DynamoDB table")
+  map(buf, km.filter,       actions.filter,        "filter DynamoDB tables")
+  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
+  map(buf, km.refresh,      actions.refresh,       "refresh DynamoDB tables")
+  -- Visual-mode delete
+  vmap(buf, km.delete, actions.delete_visual, "delete selected DynamoDB tables")
+end
+
+--- Apply DynamoDB per-table menu keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_dynamodb_menu(buf, actions)
+  local km = require("aws.config").values.keymaps.dynamodb
+
+  map(buf, km.menu_open,    actions.open_section, "open DynamoDB table section")
+  map(buf, km.menu_refresh, actions.refresh,      "refresh DynamoDB table menu")
+end
+
+--- Apply DynamoDB detail / scan buffer keymaps.
+--- Only wires actions that are provided (non-nil).
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_dynamodb_section(buf, actions)
+  local km = require("aws.config").values.keymaps.dynamodb
+
+  map(buf, km.detail_refresh, actions.refresh, "refresh")
+  if actions.scan_run then
+    map(buf, km.scan_run,  actions.scan_run,  "run scan / query")
+  end
+  if actions.scan_next then
+    map(buf, km.scan_next, actions.scan_next, "next page of results")
+  end
+  if actions.scan_json then
+    map(buf, km.scan_json, actions.scan_json, "toggle JSON / table view")
+  end
+end
+
 return M

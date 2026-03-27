@@ -116,6 +116,21 @@ local M = {}
 ---@field refresh        string|false  re-fetch from AWS (list buffer)
 ---@field detail_refresh string|false  refresh a menu, section, or detail buffer
 
+---@class AwsKeymapsDynamoDB
+--- Keymaps active inside DynamoDB buffers (list, menu, detail, scan).
+--- Set any key to false to disable it.
+---@field open_menu      string|false  open per-table menu from the list buffer
+---@field delete         string|false  delete table under cursor (list buffer)
+---@field filter         string|false  prompt to filter tables by name
+---@field clear_filter   string|false  clear active filter
+---@field refresh        string|false  re-fetch from AWS (list buffer)
+---@field menu_open      string|false  open section from the per-table menu
+---@field menu_refresh   string|false  refresh the per-table menu
+---@field detail_refresh string|false  refresh a detail or scan buffer
+---@field scan_run       string|false  run / re-run the scan or query (scan buffer)
+---@field scan_next      string|false  fetch the next page of scan results (scan buffer)
+---@field scan_json      string|false  toggle between table view and raw JSON view (scan buffer)
+
 ---@class AwsKeymaps
 ---@field cloudformation AwsKeymapsCF
 ---@field s3             AwsKeymapsS3
@@ -128,6 +143,7 @@ local M = {}
 ---@field ecs            AwsKeymapsECS
 ---@field iam            AwsKeymapsIAM
 ---@field vpc            AwsKeymapsVPC
+---@field dynamodb       AwsKeymapsDynamoDB
 
 ---@class AwsIcons
 ---@field stack       string
@@ -253,6 +269,19 @@ local defaults = {
       clear_filter   = "C",
       refresh        = "R",
       detail_refresh = "R",
+    },
+    dynamodb = {
+      open_menu      = "<CR>",
+      delete         = "dd",
+      filter         = "F",
+      clear_filter   = "C",
+      refresh        = "R",
+      menu_open      = "<CR>",
+      menu_refresh   = "R",
+      detail_refresh = "R",
+      scan_run       = "R",
+      scan_next      = "n",
+      scan_json      = "J",
     },
   },
 }
