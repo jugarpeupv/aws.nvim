@@ -86,7 +86,7 @@ raw stderr output is shown verbatim in the buffer.
 
 ```lua
 {
-  "you/aws.nvim",
+  "jugarpeupv/aws.nvim",
   config = function()
     require("aws").setup()
   end,
@@ -97,7 +97,7 @@ raw stderr output is shown verbatim in the buffer.
 
 ```lua
 use {
-  "you/aws.nvim",
+  "jugarpeupv/aws.nvim",
   config = function()
     require("aws").setup()
   end,
