@@ -70,6 +70,11 @@ local services = {
     desc   = "Tables — scan, query, detail view, delete",
     action = function(co) require("aws.dynamodb").list_tables(co) end,
   },
+  {
+    label  = "EC2",
+    desc   = "Instances — detail view, filter by name/id",
+    action = function(co) require("aws.ec2").list_instances(co) end,
+  },
 }
 
 -------------------------------------------------------------------------------

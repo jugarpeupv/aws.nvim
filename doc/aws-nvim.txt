@@ -9,10 +9,20 @@ CONTENTS                                                        *aws-nvim-toc*
   3. Installation .............. |aws-nvim-installation|
   4. Configuration ............. |aws-nvim-configuration|
   5. Per-command flags ......... |aws-nvim-flags|
-  6. CloudFormation ............ |aws-nvim-cloudformation|
-  7. S3 ....................... |aws-nvim-s3|
-  8. CloudWatch ................ |aws-nvim-cloudwatch|
-  9. Architecture .............. |aws-nvim-architecture|
+  6. Service Picker ............ |aws-nvim-picker|
+  7. CloudFormation ............ |aws-nvim-cloudformation|
+  8. S3 ....................... |aws-nvim-s3|
+  9. CloudWatch ................ |aws-nvim-cloudwatch|
+ 10. Lambda ................... |aws-nvim-lambda|
+ 11. ACM ...................... |aws-nvim-acm|
+ 12. Secrets Manager .......... |aws-nvim-secretsmanager|
+ 13. CloudFront ............... |aws-nvim-cloudfront|
+ 14. API Gateway .............. |aws-nvim-apigateway|
+ 15. ECS / Fargate ............ |aws-nvim-ecs|
+ 16. IAM ...................... |aws-nvim-iam|
+ 17. VPC ...................... |aws-nvim-vpc|
+ 18. DynamoDB ................. |aws-nvim-dynamodb|
+ 19. Architecture .............. |aws-nvim-architecture|
 
 ==============================================================================
 1. INTRODUCTION                                               *aws-nvim-intro*
@@ -23,6 +33,20 @@ search, and keymaps work out of the box.
 
 All CLI calls are asynchronous (|vim.loop| / libuv); the editor never blocks
 while waiting for AWS responses.
+
+Supported services:
+  - AWS CloudFormation
+  - AWS S3
+  - AWS CloudWatch
+  - AWS Lambda
+  - AWS ACM (Certificate Manager)
+  - AWS Secrets Manager
+  - AWS CloudFront
+  - AWS API Gateway
+  - AWS ECS / Fargate
+  - AWS IAM
+  - AWS VPC
+  - AWS DynamoDB
 
 ==============================================================================
 2. REQUIREMENTS                                        *aws-nvim-requirements*
@@ -42,7 +66,7 @@ If a CLI call fails the raw stderr output is shown verbatim in the buffer.
 lazy.nvim ~
 >lua
     {
-      "you/aws.nvim",
+      "jugarpeupv/aws.nvim",
       config = function()
         require("aws").setup()
       end,
@@ -52,7 +76,7 @@ lazy.nvim ~
 packer.nvim ~
 >lua
     use {
-      "you/aws.nvim",
+      "jugarpeupv/aws.nvim",
       config = function()
         require("aws").setup()
       end,
@@ -89,14 +113,16 @@ All options are optional. Call `setup()` with any overrides: >lua
       -- Set any key to false to disable it entirely.
       keymaps = {
         cloudformation = {
-          open_events  = "<CR>",  -- open events for stack under cursor
-          delete       = "dd",    -- delete stack under cursor
-          filter       = "F",     -- prompt to filter stacks by name
-          clear_filter = "C",     -- clear active filter
-          refresh      = "R",     -- re-fetch stacks from AWS
+          open_resources = "<CR>",  -- open resources for stack under cursor
+          open_events    = "E",     -- open events for stack under cursor
+          delete         = "dd",    -- delete stack under cursor
+          filter         = "F",     -- prompt to filter stacks by name
+          clear_filter   = "C",     -- clear active filter
+          refresh        = "R",     -- re-fetch stacks from AWS
         },
         s3 = {
-          empty        = "de",    -- empty bucket under cursor (recursive rm)
+          open_bucket  = "<CR>",  -- open bucket under cursor in oil.nvim
+          empty        = "de",    -- empty bucket under cursor
           delete       = "dd",    -- delete bucket under cursor (must be empty)
           filter       = "F",     -- prompt to filter buckets by name
           clear_filter = "C",     -- clear active filter
@@ -109,6 +135,84 @@ All options are optional. Call `setup()` with any overrides: >lua
           filter       = "F",     -- prompt to filter log groups by name
           clear_filter = "C",     -- clear active filter
           refresh      = "R",     -- re-fetch from AWS
+        },
+        lambda = {
+          open_detail  = "<CR>",  -- open detail view for function under cursor
+          open_logs    = "L",     -- open CloudWatch log streams for function
+          delete       = "dd",    -- delete function under cursor
+          filter       = "F",     -- prompt to filter functions by name
+          clear_filter = "C",     -- clear active filter
+          refresh      = "R",     -- re-fetch from AWS
+          detail_logs  = "L",     -- open CW log streams from detail buffer
+        },
+        acm = {
+          open_detail    = "<CR>",  -- open detail view for certificate under cursor
+          delete         = "dd",    -- delete certificate under cursor
+          filter         = "F",     -- prompt to filter certificates by domain
+          clear_filter   = "C",     -- clear active filter
+          refresh        = "R",     -- re-fetch from AWS
+          detail_refresh = "R",     -- refresh the detail view
+        },
+        secretsmanager = {
+          open_detail    = "<CR>",  -- open detail view for secret under cursor
+          delete         = "dd",    -- delete secret under cursor
+          filter         = "F",     -- prompt to filter secrets by name
+          clear_filter   = "C",     -- clear active filter
+          refresh        = "R",     -- re-fetch from AWS
+          detail_refresh = "R",     -- refresh the detail view
+          reveal         = "gS",    -- toggle reveal / hide secret value
+        },
+        cloudfront = {
+          open_detail       = "<CR>",  -- open detail view for distribution
+          invalidate        = "I",     -- create a cache invalidation
+          filter            = "F",     -- prompt to filter distributions
+          clear_filter      = "C",     -- clear active filter
+          refresh           = "R",     -- re-fetch from AWS
+          detail_refresh    = "R",     -- refresh the detail view
+          detail_invalidate = "I",     -- invalidate from the detail buffer
+        },
+        apigateway = {
+          open_detail    = "<CR>",  -- open detail view for REST API under cursor
+          filter         = "F",     -- prompt to filter APIs by name
+          clear_filter   = "C",     -- clear active filter
+          refresh        = "R",     -- re-fetch from AWS
+          detail_refresh = "R",     -- refresh the detail view
+        },
+        ecs = {
+          open_detail    = "<CR>",  -- open cluster detail (services + tasks)
+          filter         = "F",     -- prompt to filter clusters by name
+          clear_filter   = "C",     -- clear active filter
+          refresh        = "R",     -- re-fetch from AWS
+          detail_refresh = "R",     -- refresh the detail view
+        },
+        iam = {
+          open_list      = "<CR>",  -- open resource list from the menu
+          open_detail    = "<CR>",  -- open detail view for resource under cursor
+          filter         = "F",     -- prompt to filter resources by name
+          clear_filter   = "C",     -- clear active filter
+          toggle_scope   = "T",     -- toggle policy scope Local <-> All
+          refresh        = "R",     -- re-fetch from AWS
+          detail_refresh = "R",     -- refresh the detail view
+        },
+        vpc = {
+          open_detail    = "<CR>",  -- open VPC menu (list) or section (menu)
+          filter         = "F",     -- prompt to filter VPCs by name or ID
+          clear_filter   = "C",     -- clear active filter
+          refresh        = "R",     -- re-fetch from AWS
+          detail_refresh = "R",     -- refresh a menu, section, or detail buffer
+        },
+        dynamodb = {
+          open_menu      = "<CR>",  -- open per-table menu from the list buffer
+          delete         = "dd",    -- delete table under cursor
+          filter         = "F",     -- prompt to filter tables by name
+          clear_filter   = "C",     -- clear active filter
+          refresh        = "R",     -- re-fetch from AWS (list buffer)
+          menu_open      = "<CR>",  -- open section from the per-table menu
+          menu_refresh   = "R",     -- refresh the per-table menu
+          detail_refresh = "R",     -- refresh a detail or scan buffer
+          scan_run       = "R",     -- run / re-run the scan or query
+          scan_next      = "n",     -- fetch next page of scan results
+          scan_json      = "J",     -- toggle table view / raw JSON view
         },
       },
     })
@@ -133,9 +237,6 @@ All options are optional. Call `setup()` with any overrides: >lua
     string accepted by |vim.keymap.set()|, or `false` to disable the binding
     entirely.
 
-    See |aws-nvim-cloudformation-keys|, |aws-nvim-s3-keys|, and
-    |aws-nvim-cloudwatch-groups-keys| for per-service defaults.
-
 ==============================================================================
 5. PER-COMMAND FLAGS                                         *aws-nvim-flags*
 
@@ -151,15 +252,37 @@ single invocation. The flags can appear anywhere in the argument list. >
 
 Tab-completion is available for both flags and sub-commands.
 
+`:AwsCW list` also accepts `--fresh` to bypass the in-memory cache and force
+a fresh fetch from AWS.
+
 ==============================================================================
-6. CLOUDFORMATION                              *aws-cf* *aws-nvim-cloudformation*
+6. SERVICE PICKER                                *aws-picker* *aws-nvim-picker*
+
+`:AwsPicker` opens a fuzzy finder listing all supported services. Selecting
+an entry opens that service's list buffer immediately.
+
+The picker automatically uses the best available backend:
+
+  Priority  Backend              Requirement ~
+  1         snacks.nvim          `folke/snacks.nvim` loaded
+  2         Telescope            `nvim-telescope/telescope.nvim` loaded
+  3         `vim.ui.select`      always available
+
+                                                                *:AwsPicker*
+:AwsPicker [--region {r}] [--profile {p}]
+    Open the service picker. The selected service opens with the supplied
+    --region / --profile overrides applied.
+
+==============================================================================
+7. CLOUDFORMATION                          *aws-cf* *aws-nvim-cloudformation*
 
 ------------------------------------------------------------------------------
-Commands                                         *aws-nvim-cloudformation-cmd*
+Commands                                        *aws-nvim-cloudformation-cmd*
 
                                                                    *:AwsCF*
-:AwsCF list [--region {r}] [--profile {p}]
-    Open the CloudFormation stacks list buffer.
+:AwsCF [list] [--region {r}] [--profile {p}]
+    Open the CloudFormation stacks list buffer. `list` is the default
+    sub-command and may be omitted.
 
 :AwsCF events {name} [--region {r}] [--profile {p}]
     Open the events buffer for the named stack.
@@ -168,34 +291,43 @@ Commands                                         *aws-nvim-cloudformation-cmd*
     Delete the named stack (asks for confirmation).
 
 ------------------------------------------------------------------------------
-Stacks buffer                                   *aws-nvim-cloudformation-keys*
+Stacks buffer                                  *aws-nvim-cloudformation-keys*
     filetype: `aws-cloudformation`
 
     Key   Action ~
-    <CR>  Open the events buffer for the stack under cursor.
+    <CR>  Open the resources tree for the stack under cursor.
+    E     Open the events buffer for the stack under cursor.
     dd    Delete the stack under cursor (asks for confirmation).
+    dd    (visual) Delete all stacks in the visual selection.
     F     Prompt to filter the list by stack name.
     C     Clear the active filter.
     R     Re-fetch stacks from AWS.
+    q     Close the split window.
 
     All keys are configurable via |aws-nvim-keymaps|.
     Standard Neovim motions (gg, G, /{pattern}, n, N, yank, …) work because
     output lives in a normal `nofile` buffer.
 
 ------------------------------------------------------------------------------
-Events buffer                                 *aws-nvim-cloudformation-events*
+Resources buffer                          *aws-nvim-cloudformation-resources*
+    filetype: `aws-cloudformation`
+
+    Key   Action ~
+    E     Open the events buffer for the same stack.
+    R     Re-fetch resources from AWS.
+
+------------------------------------------------------------------------------
+Events buffer                               *aws-nvim-cloudformation-events*
     filetype: `aws-cloudformation`
 
     Key   Action ~
     R     Re-fetch events from AWS.
 
-    Standard Neovim motions apply (see above).
-
 ==============================================================================
-7. S3                                                    *aws-s3* *aws-nvim-s3*
+8. S3                                                   *aws-s3* *aws-nvim-s3*
 
 ------------------------------------------------------------------------------
-Commands                                                    *aws-nvim-s3-cmd*
+Commands                                                   *aws-nvim-s3-cmd*
 
                                                                    *:AwsS3*
 :AwsS3 [list] [--region {r}] [--profile {p}]
@@ -209,15 +341,18 @@ Commands                                                    *aws-nvim-s3-cmd*
     Delete the named bucket (asks for confirmation; bucket must be empty).
 
 ------------------------------------------------------------------------------
-Buckets buffer                                              *aws-nvim-s3-keys*
+Buckets buffer                                             *aws-nvim-s3-keys*
     filetype: `aws-s3`
 
     Key   Action ~
+    <CR>  Open the bucket under cursor in oil.nvim (oil-s3://).
     de    Empty the bucket under cursor (asks for confirmation).
     dd    Delete the bucket under cursor (asks for confirmation; must be empty).
+    dd    (visual) Delete all buckets in the visual selection.
     F     Prompt to filter the list by bucket name.
     C     Clear the active filter.
     R     Re-fetch buckets from AWS.
+    q     Close the split window.
 
     All keys are configurable via |aws-nvim-keymaps|.
 
@@ -226,15 +361,16 @@ Buckets buffer                                              *aws-nvim-s3-keys*
     made.
 
 ==============================================================================
-8. CLOUDWATCH                                    *aws-cw* *aws-nvim-cloudwatch*
+9. CLOUDWATCH                                  *aws-cw* *aws-nvim-cloudwatch*
 
 ------------------------------------------------------------------------------
-Commands                                               *aws-nvim-cloudwatch-cmd*
+Commands                                              *aws-nvim-cloudwatch-cmd*
 
                                                                    *:AwsCW*
-:AwsCW [list] [--region {r}] [--profile {p}]
+:AwsCW [list] [--region {r}] [--profile {p}] [--fresh]
     Open the CloudWatch log groups list buffer. `list` is the default
-    sub-command and may be omitted.
+    sub-command and may be omitted. Pass `--fresh` to bypass the cache and
+    force a new fetch from AWS.
 
 :AwsCW streams {group} [--region {r}] [--profile {p}]
     Open the log streams buffer for the named log group.
@@ -246,15 +382,17 @@ Commands                                               *aws-nvim-cloudwatch-cmd*
     Delete the named log group (asks for confirmation).
 
 ------------------------------------------------------------------------------
-Log groups buffer                             *aws-nvim-cloudwatch-groups-keys*
+Log groups buffer                            *aws-nvim-cloudwatch-groups-keys*
     filetype: `aws-cloudwatch`
 
     Key   Action ~
     <CR>  Open the log streams buffer for the group under cursor.
     dd    Delete the log group under cursor (asks for confirmation).
+    dd    (visual) Delete all log groups in the visual selection.
     F     Prompt to filter the list by group name.
     C     Clear the active filter.
     R     Re-fetch log groups from AWS.
+    q     Close the split window.
 
     All keys are configurable via |aws-nvim-keymaps|.
 
@@ -263,7 +401,7 @@ Log groups buffer                             *aws-nvim-cloudwatch-groups-keys*
     incrementally.
 
 ------------------------------------------------------------------------------
-Log streams buffer                          *aws-nvim-cloudwatch-streams-keys*
+Log streams buffer                         *aws-nvim-cloudwatch-streams-keys*
     filetype: `aws-cloudwatch`
 
     Key   Action ~
@@ -274,7 +412,7 @@ Log streams buffer                          *aws-nvim-cloudwatch-streams-keys*
     sorted by last event time (most recent first).
 
 ------------------------------------------------------------------------------
-Log events buffer                             *aws-nvim-cloudwatch-logs-keys*
+Log events buffer                            *aws-nvim-cloudwatch-logs-keys*
     filetype: `aws-cloudwatch`
 
     Key   Action ~
@@ -284,33 +422,548 @@ Log events buffer                             *aws-nvim-cloudwatch-logs-keys*
     Multi-line messages are indented for readability.
 
 ==============================================================================
-9. ARCHITECTURE                                        *aws-nvim-architecture*
+10. LAMBDA                                          *aws-lambda* *aws-nvim-lambda*
+
+------------------------------------------------------------------------------
+Commands                                               *aws-nvim-lambda-cmd*
+
+                                                                *:AwsLambda*
+:AwsLambda [list] [--region {r}] [--profile {p}]
+    Open the Lambda functions list buffer. `list` is the default sub-command
+    and may be omitted.
+
+:AwsLambda detail {name} [--region {r}] [--profile {p}]
+    Open the detail view for the named function.
+
+:AwsLambda delete {name} [--region {r}] [--profile {p}]
+    Delete the named function (asks for confirmation).
+
+------------------------------------------------------------------------------
+Functions buffer                                      *aws-nvim-lambda-keys*
+    filetype: `aws-lambda`
+
+    Key   Action ~
+    <CR>  Open the detail view for the function under cursor.
+    L     Open CloudWatch log streams for the function under cursor.
+    dd    Delete the function under cursor (asks for confirmation).
+    dd    (visual) Delete all functions in the visual selection.
+    F     Prompt to filter the list by function name.
+    C     Clear the active filter.
+    R     Re-fetch functions from AWS.
+    q     Close the split window.
+
+    All keys are configurable via |aws-nvim-keymaps|.
+
+    The list is paginated and all pages are fetched automatically.
+
+------------------------------------------------------------------------------
+Function detail buffer                         *aws-nvim-lambda-detail-keys*
+    filetype: `aws-lambda`
+
+    Key   Action ~
+    L     Open CloudWatch log streams for this function.
+    R     Re-fetch the detail view from AWS.
+
+    Opens in a vertical split. Shows runtime, handler, memory, timeout,
+    environment variables, and the last-modified timestamp.
+
+==============================================================================
+11. ACM                                               *aws-acm* *aws-nvim-acm*
+
+------------------------------------------------------------------------------
+Commands                                                  *aws-nvim-acm-cmd*
+
+                                                                  *:AwsACM*
+:AwsACM [list] [--region {r}] [--profile {p}]
+    Open the ACM certificates list buffer. `list` is the default sub-command
+    and may be omitted.
+
+:AwsACM detail {arn} [--region {r}] [--profile {p}]
+    Open the detail view for the certificate identified by ARN.
+
+:AwsACM delete {arn} [--region {r}] [--profile {p}]
+    Delete the certificate identified by ARN (asks for confirmation).
+
+------------------------------------------------------------------------------
+Certificates buffer                                        *aws-nvim-acm-keys*
+    filetype: `aws-acm`
+
+    Key   Action ~
+    <CR>  Open the detail view for the certificate under cursor.
+    dd    Delete the certificate under cursor (asks for confirmation).
+    dd    (visual) Delete all certificates in the visual selection.
+    F     Prompt to filter the list by domain name.
+    C     Clear the active filter.
+    R     Re-fetch certificates from AWS.
+
+    All keys are configurable via |aws-nvim-keymaps|.
+
+    The list is paginated and all pages are fetched automatically.
+
+------------------------------------------------------------------------------
+Certificate detail buffer                          *aws-nvim-acm-detail-keys*
+    filetype: `aws-acm`
+
+    Key   Action ~
+    R     Re-fetch the detail view from AWS.
+
+    Opens in a vertical split. Shows status, domain names, SANs, validation
+    records, issuer, and expiry.
+
+==============================================================================
+12. SECRETS MANAGER                  *aws-sm* *aws-nvim-secretsmanager*
+
+------------------------------------------------------------------------------
+Commands                                         *aws-nvim-secretsmanager-cmd*
+
+                                                                   *:AwsSM*
+:AwsSM [list] [--region {r}] [--profile {p}]
+    Open the Secrets Manager secrets list buffer. `list` is the default
+    sub-command and may be omitted.
+
+:AwsSM detail {name} [--region {r}] [--profile {p}]
+    Open the detail view for the named secret.
+
+:AwsSM delete {name} [--region {r}] [--profile {p}]
+    Delete the named secret with no recovery window (asks for confirmation).
+
+------------------------------------------------------------------------------
+Secrets buffer                                 *aws-nvim-secretsmanager-keys*
+    filetype: `aws-secretsmanager`
+
+    Key   Action ~
+    <CR>  Open the detail view for the secret under cursor.
+    dd    Delete the secret under cursor (no recovery window; asks for
+          confirmation).
+    dd    (visual) Delete all secrets in the visual selection.
+    F     Prompt to filter the list by secret name.
+    C     Clear the active filter.
+    R     Re-fetch secrets from AWS.
+
+    All keys are configurable via |aws-nvim-keymaps|.
+
+    The list is paginated and all pages are fetched automatically.
+
+------------------------------------------------------------------------------
+Secret detail buffer                      *aws-nvim-secretsmanager-detail-keys*
+    filetype: `aws-secretsmanager`
+
+    Key   Action ~
+    gS    Toggle between revealing and hiding the secret value.
+    R     Re-fetch the detail view from AWS.
+
+    Opens in a vertical split. The secret value is hidden by default; press
+    `gS` to reveal it in the buffer.
+
+==============================================================================
+13. CLOUDFRONT                            *aws-cfront* *aws-nvim-cloudfront*
+
+------------------------------------------------------------------------------
+Commands                                           *aws-nvim-cloudfront-cmd*
+
+                                                               *:AwsCFront*
+:AwsCFront [list] [--region {r}] [--profile {p}]
+    Open the CloudFront distributions list buffer. `list` is the default
+    sub-command and may be omitted.
+
+:AwsCFront detail {id} [--region {r}] [--profile {p}]
+    Open the detail view for the distribution identified by ID.
+
+:AwsCFront invalidate {id} [--region {r}] [--profile {p}]
+    Prompt for a path and create a cache invalidation for the distribution.
+
+------------------------------------------------------------------------------
+Distributions buffer                              *aws-nvim-cloudfront-keys*
+    filetype: `aws-cloudfront`
+
+    Key   Action ~
+    <CR>  Open the detail view for the distribution under cursor.
+    I     Prompt for a path and create a cache invalidation.
+    F     Prompt to filter the list by domain name or ID.
+    C     Clear the active filter.
+    R     Re-fetch distributions from AWS.
+
+    All keys are configurable via |aws-nvim-keymaps|.
+
+    The list is paginated and all pages are fetched automatically.
+
+------------------------------------------------------------------------------
+Distribution detail buffer                 *aws-nvim-cloudfront-detail-keys*
+    filetype: `aws-cloudfront`
+
+    Key   Action ~
+    I     Create a cache invalidation for this distribution.
+    R     Re-fetch the detail view from AWS.
+
+    Opens in a vertical split. Shows aliases, origins, cache behaviors,
+    price class, HTTP version, and status.
+
+==============================================================================
+14. API GATEWAY                              *aws-agw* *aws-nvim-apigateway*
+
+------------------------------------------------------------------------------
+Commands                                          *aws-nvim-apigateway-cmd*
+
+                                                                  *:AwsAGW*
+:AwsAGW [list] [--region {r}] [--profile {p}]
+    Open the API Gateway REST APIs list buffer. `list` is the default
+    sub-command and may be omitted.
+
+:AwsAGW detail {id} [--region {r}] [--profile {p}]
+    Open the detail view for the REST API identified by ID.
+
+------------------------------------------------------------------------------
+REST APIs buffer                                 *aws-nvim-apigateway-keys*
+    filetype: `aws-apigateway`
+
+    Key   Action ~
+    <CR>  Open the detail view for the REST API under cursor.
+    F     Prompt to filter the list by API name.
+    C     Clear the active filter.
+    R     Re-fetch REST APIs from AWS.
+
+    All keys are configurable via |aws-nvim-keymaps|.
+
+    The list is paginated and all pages are fetched automatically.
+
+------------------------------------------------------------------------------
+REST API detail buffer                      *aws-nvim-apigateway-detail-keys*
+    filetype: `aws-apigateway`
+
+    Key   Action ~
+    R     Re-fetch the detail view from AWS.
+
+    Opens in a vertical split. Fetches the API description, stages, resources,
+    and authorizers in parallel.
+
+==============================================================================
+15. ECS / FARGATE                                   *aws-ecs* *aws-nvim-ecs*
+
+------------------------------------------------------------------------------
+Commands                                                 *aws-nvim-ecs-cmd*
+
+                                                                  *:AwsECS*
+:AwsECS [list] [--region {r}] [--profile {p}]
+    Open the ECS clusters list buffer. `list` is the default sub-command
+    and may be omitted.
+
+:AwsECS detail {cluster-arn} [--region {r}] [--profile {p}]
+    Open the detail view for the cluster identified by ARN or name.
+
+------------------------------------------------------------------------------
+Clusters buffer                                          *aws-nvim-ecs-keys*
+    filetype: `aws-ecs`
+
+    Key   Action ~
+    <CR>  Open the detail view for the cluster under cursor.
+    F     Prompt to filter the list by cluster name.
+    C     Clear the active filter.
+    R     Re-fetch clusters from AWS.
+
+    All keys are configurable via |aws-nvim-keymaps|.
+
+    The list is paginated and all pages are fetched automatically.
+
+------------------------------------------------------------------------------
+Cluster detail buffer                            *aws-nvim-ecs-detail-keys*
+    filetype: `aws-ecs`
+
+    Key   Action ~
+    R     Re-fetch the detail view from AWS.
+
+    Opens in a vertical split. Fetches services and running tasks for the
+    cluster in parallel.
+
+==============================================================================
+16. IAM                                               *aws-iam* *aws-nvim-iam*
+
+------------------------------------------------------------------------------
+Commands                                                 *aws-nvim-iam-cmd*
+
+                                                                  *:AwsIAM*
+:AwsIAM [list] [--region {r}] [--profile {p}]
+    Open the IAM service menu (Users / Groups / Roles / Policies /
+    Identity Providers). `list` is the default sub-command.
+
+:AwsIAM users [--region {r}] [--profile {p}]
+    Open the IAM users list buffer directly.
+
+:AwsIAM groups [--region {r}] [--profile {p}]
+    Open the IAM groups list buffer directly.
+
+:AwsIAM roles [--region {r}] [--profile {p}]
+    Open the IAM roles list buffer directly.
+
+:AwsIAM policies [--region {r}] [--profile {p}]
+    Open the IAM policies list buffer directly.
+
+:AwsIAM providers [--region {r}] [--profile {p}]
+    Open the IAM identity providers list buffer directly (OIDC + SAML).
+
+:AwsIAM detail user {name} [--region {r}] [--profile {p}]
+    Open the detail view for a user.
+
+:AwsIAM detail group {name} [--region {r}] [--profile {p}]
+    Open the detail view for a group.
+
+:AwsIAM detail role {name} [--region {r}] [--profile {p}]
+    Open the detail view for a role.
+
+:AwsIAM detail policy {arn} [--region {r}] [--profile {p}]
+    Open the detail view for a managed policy.
+
+:AwsIAM detail provider {arn} [oidc|saml] [--region {r}] [--profile {p}]
+    Open the detail view for an identity provider. The kind defaults to
+    `oidc` when omitted.
+
+------------------------------------------------------------------------------
+IAM menu buffer                                     *aws-nvim-iam-menu-keys*
+    filetype: `aws-iam`
+
+    Key   Action ~
+    <CR>  Open the resource list for the entry under cursor.
+    R     Refresh the menu.
+
+------------------------------------------------------------------------------
+IAM list buffers (users/groups/roles/policies/providers)
+                                                    *aws-nvim-iam-list-keys*
+    filetype: `aws-iam`
+
+    Key   Action ~
+    <CR>  Open the detail view for the resource under cursor.
+    T     Toggle policy scope between Local and All (policies list only).
+    F     Prompt to filter the list by name.
+    C     Clear the active filter.
+    R     Re-fetch from AWS.
+
+    All keys are configurable via |aws-nvim-keymaps|.
+
+    Each list is paginated; all pages are fetched automatically.
+
+------------------------------------------------------------------------------
+IAM detail buffers                               *aws-nvim-iam-detail-keys*
+    filetype: `aws-iam`
+
+    Key   Action ~
+    R     Re-fetch the detail view from AWS.
+
+    Opens in a vertical split. User detail fetches groups, policies,
+    access keys, MFA devices, login profile, and last-used info in parallel.
+    Role detail fetches the trust policy, attached policies, and last-used
+    info in parallel. Policy detail fetches the policy document and
+    attachment list in parallel.
+
+==============================================================================
+17. VPC                                               *aws-vpc* *aws-nvim-vpc*
+
+------------------------------------------------------------------------------
+Commands                                                 *aws-nvim-vpc-cmd*
+
+                                                                  *:AwsVPC*
+:AwsVPC [list] [--region {r}] [--profile {p}]
+    Open the VPC list buffer. `list` is the default sub-command and may be
+    omitted.
+
+:AwsVPC detail {vpc-id} [--region {r}] [--profile {p}]
+    Open the detail view for the VPC identified by ID.
+
+------------------------------------------------------------------------------
+VPCs buffer                                              *aws-nvim-vpc-keys*
+    filetype: `aws-vpc`
+
+    Key   Action ~
+    <CR>  Open the section menu for the VPC under cursor.
+    F     Prompt to filter the list by VPC name or ID.
+    C     Clear the active filter.
+    R     Re-fetch VPCs from AWS.
+
+    All keys are configurable via |aws-nvim-keymaps|.
+
+    The list is paginated and all pages are fetched automatically.
+
+------------------------------------------------------------------------------
+VPC section menu                                    *aws-nvim-vpc-menu-keys*
+    filetype: `aws-vpc`
+
+    Key   Action ~
+    <CR>  Open the selected section (General, Subnets, Gateways, Routes,
+          Security Groups).
+    R     Refresh the menu.
+
+------------------------------------------------------------------------------
+VPC section / detail buffers                      *aws-nvim-vpc-detail-keys*
+    filetype: `aws-vpc`
+
+    Key   Action ~
+    <CR>  Open the detail view for the resource under cursor (where
+          applicable, e.g., Security Group detail).
+    F     Prompt to filter (section list buffers only).
+    C     Clear the active filter (section list buffers only).
+    R     Re-fetch the current buffer from AWS.
+
+    The General view fetches VPC attributes and tags. Subnets, Gateways,
+    Routes, and Security Groups are each shown in separate section buffers.
+    Security Group detail shows the inbound and outbound rule sets.
+
+==============================================================================
+18. DYNAMODB                                  *aws-ddb* *aws-nvim-dynamodb*
+
+------------------------------------------------------------------------------
+Commands                                             *aws-nvim-dynamodb-cmd*
+
+                                                                  *:AwsDDB*
+:AwsDDB [list] [--region {r}] [--profile {p}]
+    Open the DynamoDB tables list buffer. `list` is the default sub-command
+    and may be omitted.
+
+:AwsDDB menu {name} [--region {r}] [--profile {p}]
+    Open the per-table section menu for the named table.
+
+:AwsDDB detail {name} [--region {r}] [--profile {p}]
+    Open the table detail view for the named table.
+
+:AwsDDB scan {name} [--region {r}] [--profile {p}]
+    Open the scan / query buffer for the named table.
+
+:AwsDDB delete {name} [--region {r}] [--profile {p}]
+    Delete the named table (asks for confirmation).
+
+------------------------------------------------------------------------------
+Tables buffer                                       *aws-nvim-dynamodb-keys*
+    filetype: `aws-dynamodb`
+
+    Key   Action ~
+    <CR>  Open the per-table section menu for the table under cursor.
+    dd    Delete the table under cursor (asks for confirmation).
+    dd    (visual) Delete all tables in the visual selection.
+    F     Prompt to filter the list by table name.
+    C     Clear the active filter.
+    R     Re-fetch tables from AWS.
+
+    All keys are configurable via |aws-nvim-keymaps|.
+
+------------------------------------------------------------------------------
+Per-table menu buffer                          *aws-nvim-dynamodb-menu-keys*
+    filetype: `aws-dynamodb`
+
+    Key   Action ~
+    <CR>  Open the selected section (Detail, Scan / Query).
+    R     Refresh the menu.
+
+------------------------------------------------------------------------------
+Table detail buffer                          *aws-nvim-dynamodb-detail-keys*
+    filetype: `aws-dynamodb`
+
+    Key   Action ~
+    R     Re-fetch the detail view from AWS.
+
+    Opens in a vertical split. Shows table status, key schema, billing mode,
+    GSIs, LSIs, and TTL configuration.
+
+------------------------------------------------------------------------------
+Scan / Query buffer                           *aws-nvim-dynamodb-scan-keys*
+    filetype: `aws-dynamodb`
+
+    Key   Action ~
+    R     Run (or re-run) the current scan or query.
+    n     Fetch the next page of results.
+    J     Toggle between formatted table view and raw JSON view.
+
+    Opens in a vertical split. Presents a form where you can choose Scan or
+    Query, supply a filter or key-condition expression, select an index, and
+    set a page size. Results are rendered as an ASCII table; press `J` to
+    see the raw JSON instead.
+
+==============================================================================
+19. ARCHITECTURE                                       *aws-nvim-architecture*
 
 >
     aws.nvim/
-    ├── plugin/aws.lua           Entry point – registers :Aws* commands
+    ├── plugin/aws.lua               Entry point – registers :Aws* commands
     └── lua/aws/
-        ├── init.lua             Public API + setup()
-        ├── config.lua           Defaults and user-config merge
-        ├── spawn.lua            Async aws CLI runner (vim.loop / libuv)
-        ├── buffer.lua           Buffer creation and split helpers
-        ├── keymaps.lua          Configurable buffer-local keymap applier
+        ├── init.lua                 Public API + setup()
+        ├── config.lua               Defaults and user-config merge
+        ├── spawn.lua                Async aws CLI runner (vim.loop / libuv)
+        ├── buffer.lua               Buffer creation and split helpers
+        ├── keymaps.lua              Configurable buffer-local keymap applier
+        ├── picker.lua               Service picker (snacks > telescope > vim.ui.select)
         ├── cloudformation/
-        │   ├── init.lua         CloudFormation public surface
-        │   ├── stacks.lua       List, filter, and render stacks
-        │   ├── events.lua       Stack events viewer
-        │   └── delete.lua       Async stack deletion with confirmation
+        │   ├── init.lua             CloudFormation public surface
+        │   ├── stacks.lua           List, filter, and render stacks
+        │   ├── resources.lua        CDK construct tree + resource list viewer
+        │   ├── console_url.lua      AWS Console URL builder (28 resource types)
+        │   ├── events.lua           Stack events viewer
+        │   └── delete.lua           Async stack deletion with confirmation
         ├── s3/
-        │   ├── init.lua         S3 public surface
-        │   ├── buckets.lua      List, filter, and render buckets
-        │   ├── empty.lua        Async bucket empty with confirmation
-        │   └── delete.lua       Async bucket deletion with confirmation
-        └── cloudwatch/
-            ├── init.lua         CloudWatch public surface
-            ├── groups.lua       List, filter, and render log groups (paginated)
-            ├── streams.lua      Log streams viewer (vertical split)
-            ├── logs.lua         Log events viewer (vertical split)
-            └── delete.lua       Async log group deletion with confirmation
+        │   ├── init.lua             S3 public surface
+        │   ├── buckets.lua          List, filter, and render buckets
+        │   ├── empty.lua            Async bucket empty with confirmation
+        │   └── delete.lua           Async bucket deletion with confirmation
+        ├── cloudwatch/
+        │   ├── init.lua             CloudWatch public surface
+        │   ├── groups.lua           List, filter, and render log groups (paginated)
+        │   ├── streams.lua          Log streams viewer (vertical split)
+        │   ├── logs.lua             Log events viewer (vertical split)
+        │   └── delete.lua           Async log group deletion with confirmation
+        ├── lambda/
+        │   ├── init.lua             Lambda public surface
+        │   ├── functions.lua        List, filter, and render functions (paginated)
+        │   ├── detail.lua           Function detail viewer (vertical split)
+        │   └── delete.lua           Async function deletion with confirmation
+        ├── acm/
+        │   ├── init.lua             ACM public surface
+        │   ├── certificates.lua     List, filter, and render certificates (paginated)
+        │   ├── detail.lua           Certificate detail viewer (vertical split)
+        │   └── delete.lua           Async certificate deletion with confirmation
+        ├── secretsmanager/
+        │   ├── init.lua             Secrets Manager public surface
+        │   ├── secrets.lua          List, filter, and render secrets (paginated)
+        │   ├── detail.lua           Secret detail viewer (vertical split)
+        │   └── delete.lua           Async secret deletion with confirmation
+        ├── cloudfront/
+        │   ├── init.lua             CloudFront public surface
+        │   ├── distributions.lua    List, filter, and render distributions (paginated)
+        │   ├── detail.lua           Distribution detail viewer (vertical split)
+        │   └── invalidate.lua       Async cache invalidation with path prompt
+        ├── apigateway/
+        │   ├── init.lua             API Gateway public surface
+        │   ├── apis.lua             List, filter, and render REST APIs (paginated)
+        │   └── detail.lua           REST API detail viewer (parallel fetch, vertical split)
+        ├── ecs/
+        │   ├── init.lua             ECS public surface
+        │   ├── clusters.lua         List, filter, and render clusters (paginated)
+        │   └── detail.lua           Cluster detail (services + tasks, parallel fetch)
+        ├── iam/
+        │   ├── init.lua             IAM public surface
+        │   ├── menu.lua             5-item service menu
+        │   ├── users.lua            List, filter, and render users (paginated)
+        │   ├── groups.lua           List, filter, and render groups (paginated)
+        │   ├── roles.lua            List, filter, and render roles (paginated)
+        │   ├── policies.lua         List, filter, render policies; scope toggle
+        │   ├── providers.lua        List OIDC + SAML providers (parallel fetch)
+        │   └── detail/
+        │       ├── user.lua         User detail (6 parallel calls)
+        │       ├── group.lua        Group detail (3 parallel calls)
+        │       ├── role.lua         Role detail (3 parallel calls + last-accessed)
+        │       ├── policy.lua       Policy detail (3 parallel calls)
+        │       └── provider.lua     OIDC / SAML provider detail
+        ├── vpc/
+        │   ├── init.lua             VPC public surface
+        │   ├── vpcs.lua             List, filter, and render VPCs (paginated)
+        │   ├── menu.lua             Section menu (General/Subnets/Gateways/Routes/SGs)
+        │   ├── detail.lua           VPC General + Tags view
+        │   ├── sg_detail.lua        Security Group inbound/outbound rules
+        │   └── sections/            Per-section list buffers
+        └── dynamodb/
+            ├── init.lua             DynamoDB public surface
+            ├── tables.lua           List, filter, and render tables
+            ├── menu.lua             Per-table section menu (Detail / Scan)
+            ├── detail.lua           Table detail viewer (vertical split)
+            ├── scan.lua             Scan / Query entry point
+            ├── scan_form.lua        Input form (operation, expression, index, page size)
+            ├── scan_results.lua     Results renderer (table view + JSON toggle)
+            ├── scan_state.lua       Shared scan state (pagination cursors)
+            └── delete.lua           Async table deletion with confirmation
 <
 
 ==============================================================================

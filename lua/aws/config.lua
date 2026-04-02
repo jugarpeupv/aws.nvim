@@ -116,6 +116,16 @@ local M = {}
 ---@field refresh        string|false  re-fetch from AWS (list buffer)
 ---@field detail_refresh string|false  refresh a menu, section, or detail buffer
 
+---@class AwsKeymapsEC2
+--- Keymaps active inside EC2 buffers (instances list and detail).
+--- Set any key to false to disable it.
+---@field open_detail    string|false  open detail view for instance under cursor
+---@field filter         string|false  prompt to filter instances by name or id
+---@field clear_filter   string|false  clear active filter
+---@field refresh        string|false  re-fetch from AWS
+---@field close          string|false  close the split window
+---@field detail_refresh string|false  refresh the detail view
+
 ---@class AwsKeymapsDynamoDB
 --- Keymaps active inside DynamoDB buffers (list, menu, detail, scan).
 --- Set any key to false to disable it.
@@ -144,6 +154,7 @@ local M = {}
 ---@field iam            AwsKeymapsIAM
 ---@field vpc            AwsKeymapsVPC
 ---@field dynamodb       AwsKeymapsDynamoDB
+---@field ec2            AwsKeymapsEC2
 
 ---@class AwsIcons
 ---@field stack       string
@@ -282,6 +293,14 @@ local defaults = {
       scan_run       = "R",
       scan_next      = "n",
       scan_json      = "J",
+    },
+    ec2 = {
+      open_detail    = "<CR>",
+      filter         = "F",
+      clear_filter   = "C",
+      refresh        = "R",
+      close          = "q",
+      detail_refresh = "R",
     },
   },
 }

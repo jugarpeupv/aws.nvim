@@ -402,4 +402,26 @@ function M.apply_dynamodb_section(buf, actions)
   end
 end
 
+--- Apply EC2 instances list-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_ec2(buf, actions)
+  local km = require("aws.config").values.keymaps.ec2
+
+  map(buf, km.open_detail,  actions.open_detail,  "open EC2 instance detail")
+  map(buf, km.filter,       actions.filter,        "filter instances")
+  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
+  map(buf, km.refresh,      actions.refresh,       "refresh instances")
+  map(buf, km.close,        actions.close,         "close split")
+end
+
+--- Apply EC2 instance detail-buffer keymaps.
+---@param buf     integer
+---@param actions table<string, function>
+function M.apply_ec2_detail(buf, actions)
+  local km = require("aws.config").values.keymaps.ec2
+
+  map(buf, km.detail_refresh, actions.refresh, "refresh EC2 instance detail")
+end
+
 return M

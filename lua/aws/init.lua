@@ -43,6 +43,9 @@ M.vpc = require("aws.vpc")
 --- DynamoDB operations.
 M.dynamodb = require("aws.dynamodb")
 
+--- EC2 (Elastic Compute Cloud) operations.
+M.ec2 = require("aws.ec2")
+
 --- Open the service picker (snacks.nvim > telescope.nvim > vim.ui.select).
 ---@param call_opts AwsCallOpts|nil
 function M.pick(call_opts)
