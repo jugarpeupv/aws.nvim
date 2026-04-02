@@ -56,10 +56,10 @@ local function fetch(stack_name, buf, call_opts)
     }
 
     for _, ev in ipairs(data) do
-      local time     = (ev.Time     or ""):gsub("T", " "):gsub("%.%d+Z$", ""):gsub("Z$", "")
-      local resource = ev.Resource  or ""
-      local status   = ev.Status    or ""
-      local reason   = ev.Reason    or ""
+      local time     = (type(ev.Time)     == "string" and ev.Time     or ""):gsub("T", " "):gsub("%.%d+Z$", ""):gsub("Z$", "")
+      local resource = type(ev.Resource)  == "string" and ev.Resource  or ""
+      local status   = type(ev.Status)    == "string" and ev.Status    or ""
+      local reason   = type(ev.Reason)    == "string" and ev.Reason    or ""
       table.insert(out, string.format(
         "  %-26s  %-40s  %-36s  %s",
         time, resource, status, reason
