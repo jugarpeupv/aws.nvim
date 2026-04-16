@@ -1,16 +1,16 @@
 --- aws.nvim – S3 buckets list, filter, and render
 local M = {}
 
-local spawn   = require("aws.spawn")
+local spawn = require("aws.spawn")
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local BUF_NAME = "aws://s3/buckets"
 local FILETYPE = "aws-s3"
 
-local _buckets  = {}
-local _filter   = ""
+local _buckets = {}
+local _filter = ""
 local _line_map = {}
 
 -- Registry: bucket_name → { profile, region }
@@ -23,7 +23,9 @@ local _bucket_creds = {}
 local _autocmd_created = false
 
 local function ensure_oil_s3_autocmd()
-  if _autocmd_created then return end
+  if _autocmd_created then
+    return
+  end
   _autocmd_created = true
 
   -- The oil-s3:// scheme is for Neovim ≥ 0.11; older builds use oil-sss://.
@@ -37,14 +39,20 @@ local function ensure_oil_s3_autocmd()
       local bufname = ev.match or vim.api.nvim_buf_get_name(ev.buf)
       -- Extract bucket name from "oil-s3://bucket/..." or "oil-sss://bucket/..."
       local bucket = bufname:match("^oil%-s[^/]*://([^/]+)")
-      local creds  = bucket and _bucket_creds[bucket]
+      local creds = bucket and _bucket_creds[bucket]
       local oil_cfg = package.loaded["oil.config"]
-      if not oil_cfg then return end
+      if not oil_cfg then
+        return
+      end
 
       if creds then
         local args = {}
-        if creds.profile then table.insert(args, "--profile=" .. creds.profile) end
-        if creds.region  then table.insert(args, "--region="  .. creds.region)  end
+        if creds.profile then
+          table.insert(args, "--profile=" .. creds.profile)
+        end
+        if creds.region then
+          table.insert(args, "--region=" .. creds.region)
+        end
         oil_cfg.extra_s3_args = args
       end
     end,
@@ -61,19 +69,33 @@ end
 ---@return string
 local function pad_right(s, width)
   local len = #s
-  if len >= width then return s end
+  if len >= width then
+    return s
+  end
   return s .. string.rep(" ", width - len)
 end
 
 local function hint_line()
   local km = config.values.keymaps.s3
   local hints = {}
-  if km.open_bucket  then table.insert(hints, km.open_bucket  .. " open")    end
-  if km.empty        then table.insert(hints, km.empty        .. " empty")   end
-  if km.delete       then table.insert(hints, km.delete       .. " delete")  end
-  if km.filter       then table.insert(hints, km.filter       .. " filter")  end
-  if km.clear_filter then table.insert(hints, km.clear_filter .. " clear")   end
-  if km.refresh      then table.insert(hints, km.refresh      .. " refresh") end
+  if km.open_bucket then
+    table.insert(hints, km.open_bucket .. " open")
+  end
+  if km.empty then
+    table.insert(hints, km.empty .. " empty")
+  end
+  if km.delete then
+    table.insert(hints, km.delete .. " delete")
+  end
+  if km.filter then
+    table.insert(hints, km.filter .. " filter")
+  end
+  if km.clear_filter then
+    table.insert(hints, km.clear_filter .. " clear")
+  end
+  if km.refresh then
+    table.insert(hints, km.refresh .. " refresh")
+  end
   return table.concat(hints, "  |  ")
 end
 
@@ -96,13 +118,14 @@ local function render(buf)
   for _, b in ipairs(_buckets) do
     local name = b.Name or ""
     if _filter == "" or name:lower():find(_filter:lower(), 1, true) then
-      if #name > col_width then col_width = #name end
+      if #name > col_width then
+        col_width = #name
+      end
     end
   end
-  col_width = col_width + 4   -- breathing room (no 99-char cap)
+  col_width = col_width + 4 -- breathing room (no 99-char cap)
 
-  local title = "S3 Buckets"
-    .. (_filter ~= "" and ("   [filter: " .. _filter .. "]") or "")
+  local title = "S3 Buckets" .. (_filter ~= "" and ("   [filter: " .. _filter .. "]") or "")
 
   -- Header lines (normal buffer lines, not a float)
   local header = make_header(col_width)
@@ -115,7 +138,7 @@ local function render(buf)
   _line_map = {}
 
   for _, b in ipairs(_buckets) do
-    local name    = b.Name or ""
+    local name = b.Name or ""
     local created = (b.CreationDate or ""):gsub("T", " "):gsub("%.%d+Z$", ""):gsub("Z$", "")
     if _filter == "" or name:lower():find(_filter:lower(), 1, true) then
       table.insert(lines, pad_right(name, col_width) .. "  " .. created)
@@ -135,26 +158,29 @@ end
 local function fetch(buf, call_opts)
   buf_mod.set_loading(buf)
 
-  spawn.run({ "s3api", "list-buckets",
-    "--query", "Buckets[*].{Name:Name,CreationDate:CreationDate}",
-    "--output", "json",
-  }, function(ok, lines)
-    if not ok then
-      buf_mod.set_error(buf, lines)
-      return
-    end
+  spawn.run(
+    { "s3api", "list-buckets", "--query", "Buckets[*].{Name:Name,CreationDate:CreationDate}", "--output", "json" },
+    function(ok, lines)
+      if not ok then
+        buf_mod.set_error(buf, lines)
+        return
+      end
 
-    local raw = table.concat(lines, "\n")
-    local ok2, data = pcall(vim.json.decode, raw)
-    if not ok2 or type(data) ~= "table" then
-      buf_mod.set_error(buf, { "Failed to parse JSON response", raw })
-      return
-    end
+      local raw = table.concat(lines, "\n")
+      local ok2, data = pcall(vim.json.decode, raw)
+      if not ok2 or type(data) ~= "table" then
+        buf_mod.set_error(buf, { "Failed to parse JSON response", raw })
+        return
+      end
 
-    table.sort(data, function(a, b) return (a.Name or "") < (b.Name or "") end)
-    _buckets = data
-    render(buf)
-  end, call_opts)
+      table.sort(data, function(a, b)
+        return (a.Name or "") < (b.Name or "")
+      end)
+      _buckets = data
+      render(buf)
+    end,
+    call_opts
+  )
 end
 
 -------------------------------------------------------------------------------
@@ -172,7 +198,7 @@ end
 ---@return string[]
 local function buckets_in_range(r1, r2)
   local names = {}
-  local seen  = {}
+  local seen = {}
   for row = r1, r2 do
     local name = _line_map[row]
     if name and not seen[name] then
@@ -218,7 +244,7 @@ function M.open(call_opts)
   local buf = buf_mod.get_or_create(BUF_NAME, FILETYPE)
   buf_mod.open_split(buf)
 
-  local empty_mod  = require("aws.s3.empty")
+  local empty_mod = require("aws.s3.empty")
   local delete_mod = require("aws.s3.delete")
 
   -- Single-line delete (normal mode dd)
@@ -242,31 +268,27 @@ function M.open(call_opts)
       vim.notify("aws.nvim: no buckets in selection", vim.log.levels.WARN)
       return
     end
-    local label = #names == 1
-      and ("Yes, delete " .. names[1])
-      or  ("Yes, delete " .. #names .. " buckets")
-    vim.ui.select(
-      { label, "Cancel" },
-      { prompt = "Empty and delete S3 buckets?" },
-      function(_, idx)
-        if not idx or idx ~= 1 then return end
-        local removed = {}
-        local function next_delete(i)
-          if i > #names then
-            remove_from_state(removed, buf)
-            return
-          end
-          local name = names[i]
-          empty_mod.run(name, function()
-            delete_mod.run(name, function()
-              removed[name] = true
-              next_delete(i + 1)
-            end, call_opts)
-          end, call_opts)
-        end
-        next_delete(1)
+    local label = #names == 1 and ("Yes, delete " .. names[1]) or ("Yes, delete " .. #names .. " buckets")
+    vim.ui.select({ label, "Cancel" }, { prompt = "Empty and delete S3 buckets?" }, function(_, idx)
+      if not idx or idx ~= 1 then
+        return
       end
-    )
+      local removed = {}
+      local function next_delete(i)
+        if i > #names then
+          remove_from_state(removed, buf)
+          return
+        end
+        local name = names[i]
+        empty_mod.run(name, function()
+          delete_mod.run(name, function()
+            removed[name] = true
+            next_delete(i + 1)
+          end, call_opts)
+        end, call_opts)
+      end
+      next_delete(1)
+    end)
   end
 
   keymaps.apply_s3(buf, {
@@ -284,7 +306,7 @@ function M.open(call_opts)
 
       -- Resolve credentials for this buffer's identity.
       local profile = (call_opts and call_opts.profile) or config.values.default_aws_profile
-      local region  = (call_opts and call_opts.region)  or config.values.default_aws_region
+      local region = (call_opts and call_opts.region) or config.values.default_aws_region
 
       -- Store creds keyed by bucket name so the BufEnter autocmd can
       -- re-apply them whenever the user navigates back to this oil buffer.
@@ -295,8 +317,12 @@ function M.open(call_opts)
       -- must set extra_s3_args before oil.open() schedules the first ls call).
       local oil_cfg = require("oil.config")
       local new_args = {}
-      if profile then table.insert(new_args, "--profile=" .. profile) end
-      if region  then table.insert(new_args, "--region="  .. region)  end
+      if profile then
+        table.insert(new_args, "--profile=" .. profile)
+      end
+      if region then
+        table.insert(new_args, "--region=" .. region)
+      end
       oil_cfg.extra_s3_args = new_args
 
       -- oil-s3:// requires Neovim 0.11+; older versions need oil-sss://
@@ -311,16 +337,20 @@ function M.open(call_opts)
         return
       end
       empty_mod.confirm(name, function()
-        vim.defer_fn(function() fetch(buf, call_opts) end, 1000)
+        vim.defer_fn(function()
+          fetch(buf, call_opts)
+        end, 1000)
       end, call_opts)
     end,
 
-    delete        = delete_one,
+    delete = delete_one,
     delete_visual = delete_visual,
 
     filter = function()
       vim.ui.input({ prompt = "Filter buckets: ", default = _filter }, function(input)
-        if input == nil then return end
+        if input == nil then
+          return
+        end
         _filter = input
         render(buf)
       end)
@@ -331,9 +361,13 @@ function M.open(call_opts)
       render(buf)
     end,
 
-    refresh = function() fetch(buf, call_opts) end,
+    refresh = function()
+      fetch(buf, call_opts)
+    end,
 
-    close = function() buf_mod.close_split(buf) end,
+    close = function()
+      buf_mod.close_split(buf)
+    end,
   })
 
   fetch(buf, call_opts)

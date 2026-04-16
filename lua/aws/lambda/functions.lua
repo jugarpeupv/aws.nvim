@@ -1,10 +1,10 @@
 --- aws.nvim – Lambda functions list, filter, and render
 local M = {}
 
-local spawn   = require("aws.spawn")
+local spawn = require("aws.spawn")
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local FILETYPE = "aws-lambda"
 
@@ -19,7 +19,7 @@ local FILETYPE = "aws-lambda"
 ---@field profile   string|nil
 
 --- state keyed by identity string (e.g. "us-east-1" or "prod@eu-west-1")
-local _state = {}  -- identity -> LambdaFnState
+local _state = {} -- identity -> LambdaFnState
 
 local function buf_name(identity)
   return "aws://lambda/functions/" .. identity
@@ -34,7 +34,9 @@ end
 ---@return string
 local function pad_right(s, width)
   local len = #s
-  if len >= width then return s end
+  if len >= width then
+    return s
+  end
   return s .. string.rep(" ", width - len)
 end
 
@@ -53,12 +55,24 @@ end
 local function hint_line()
   local km = config.values.keymaps.lambda
   local hints = {}
-  if km.open_detail  then table.insert(hints, km.open_detail  .. " detail")   end
-  if km.open_logs    then table.insert(hints, km.open_logs    .. " logs")     end
-  if km.delete       then table.insert(hints, km.delete       .. " delete")   end
-  if km.filter       then table.insert(hints, km.filter       .. " filter")   end
-  if km.clear_filter then table.insert(hints, km.clear_filter .. " clear")    end
-  if km.refresh      then table.insert(hints, km.refresh      .. " refresh")  end
+  if km.open_detail then
+    table.insert(hints, km.open_detail .. " detail")
+  end
+  if km.open_logs then
+    table.insert(hints, km.open_logs .. " logs")
+  end
+  if km.delete then
+    table.insert(hints, km.delete .. " delete")
+  end
+  if km.filter then
+    table.insert(hints, km.filter .. " filter")
+  end
+  if km.clear_filter then
+    table.insert(hints, km.clear_filter .. " clear")
+  end
+  if km.refresh then
+    table.insert(hints, km.refresh .. " refresh")
+  end
   return table.concat(hints, "  |  ")
 end
 
@@ -67,14 +81,17 @@ end
 ---@return string[]
 local function make_header(name_width, rt_width)
   local total = name_width + rt_width + 20
-  local sep   = string.rep("-", total)
+  local sep = string.rep("-", total)
   return {
     sep,
     hint_line(),
     sep,
-    pad_right("Name", name_width) .. "  "
-      .. pad_right("Runtime", rt_width) .. "  "
-      .. pad_right("Memory", 8) .. "  "
+    pad_right("Name", name_width)
+      .. "  "
+      .. pad_right("Runtime", rt_width)
+      .. "  "
+      .. pad_right("Memory", 8)
+      .. "  "
       .. "Code size",
     string.rep("-", total),
   }
@@ -83,22 +100,28 @@ end
 ---@param buf integer
 ---@param st  LambdaFnState
 local function render(buf, st)
-  local name_width = 4   -- len("Name")
-  local rt_width   = 7   -- len("Runtime")
+  local name_width = 4 -- len("Name")
+  local rt_width = 7 -- len("Runtime")
 
   for _, f in ipairs(st.functions) do
     local name = f.FunctionName or ""
-    local rt   = f.Runtime or ""
+    local rt = f.Runtime or ""
     if st.filter == "" or name:lower():find(st.filter:lower(), 1, true) then
-      if #name > name_width then name_width = #name end
-      if #rt   > rt_width   then rt_width   = #rt   end
+      if #name > name_width then
+        name_width = #name
+      end
+      if #rt > rt_width then
+        rt_width = #rt
+      end
     end
   end
   name_width = name_width + 2
-  rt_width   = rt_width   + 2
+  rt_width = rt_width + 2
 
   local title = "Lambda Functions"
-    .. "   [region: " .. st.region .. "]"
+    .. "   [region: "
+    .. st.region
+    .. "]"
     .. (st.profile and ("   [profile: " .. st.profile .. "]") or "")
     .. (st.fetching and "  [loading…]" or "")
     .. (st.filter ~= "" and ("   [filter: " .. st.filter .. "]") or "")
@@ -113,15 +136,13 @@ local function render(buf, st)
 
   for _, f in ipairs(st.functions) do
     local name = f.FunctionName or ""
-    local rt   = f.Runtime      or "—"
-    local mem  = f.MemorySize and (f.MemorySize .. " MB") or "—"
+    local rt = f.Runtime or "—"
+    local mem = f.MemorySize and (f.MemorySize .. " MB") or "—"
     local size = fmt_size(f.CodeSize)
     if st.filter == "" or name:lower():find(st.filter:lower(), 1, true) then
-      table.insert(lines,
-        pad_right(name, name_width) .. "  "
-        .. pad_right(rt,   rt_width) .. "  "
-        .. pad_right(mem,  8)        .. "  "
-        .. size
+      table.insert(
+        lines,
+        pad_right(name, name_width) .. "  " .. pad_right(rt, rt_width) .. "  " .. pad_right(mem, 8) .. "  " .. size
       )
       st.line_map[#lines] = name
     end
@@ -140,21 +161,25 @@ end
 local function fetch(buf, st, call_opts)
   buf_mod.set_loading(buf)
   local all = {}
-  st.fetching  = true
+  st.fetching = true
   st.fetch_gen = st.fetch_gen + 1
   local my_gen = st.fetch_gen
 
   local function fetch_page(marker)
     local args = {
-      "lambda", "list-functions",
-      "--output", "json",
+      "lambda",
+      "list-functions",
+      "--output",
+      "json",
     }
     if marker then
       vim.list_extend(args, { "--marker", marker })
     end
 
     spawn.run(args, function(ok, lines)
-      if my_gen ~= st.fetch_gen then return end
+      if my_gen ~= st.fetch_gen then
+        return
+      end
 
       if not ok then
         st.fetching = false
@@ -173,14 +198,14 @@ local function fetch(buf, st, call_opts)
       for _, f in ipairs(type(data.Functions) == "table" and data.Functions or {}) do
         table.insert(all, {
           FunctionName = f.FunctionName,
-          Runtime      = f.Runtime,
-          MemorySize   = f.MemorySize,
-          Timeout      = f.Timeout,
-          CodeSize     = f.CodeSize,
+          Runtime = f.Runtime,
+          MemorySize = f.MemorySize,
+          Timeout = f.Timeout,
+          CodeSize = f.CodeSize,
           LastModified = f.LastModified,
-          Description  = f.Description,
-          Handler      = f.Handler,
-          Role         = f.Role,
+          Description = f.Description,
+          Handler = f.Handler,
+          Role = f.Role,
         })
       end
 
@@ -216,7 +241,7 @@ end
 ---@return string[]
 local function fns_in_range(st, r1, r2)
   local names = {}
-  local seen  = {}
+  local seen = {}
   for row = r1, r2 do
     local name = st.line_map[row]
     if name and not seen[name] then
@@ -241,7 +266,9 @@ local function remove_from_state(st, names, buf)
     return out
   end
   st.functions = filter_list(st.functions)
-  if st.cache then st.cache = filter_list(st.cache) end
+  if st.cache then
+    st.cache = filter_list(st.cache)
+  end
   render(buf, st)
 end
 
@@ -258,13 +285,13 @@ function M.open(call_opts)
   if not _state[identity] then
     _state[identity] = {
       functions = {},
-      filter    = "",
-      line_map  = {},
-      cache     = nil,
-      fetching  = false,
+      filter = "",
+      line_map = {},
+      cache = nil,
+      fetching = false,
       fetch_gen = 0,
-      region    = config.resolve_region(call_opts),
-      profile   = config.resolve_profile(call_opts),
+      region = config.resolve_region(call_opts),
+      profile = config.resolve_profile(call_opts),
     }
   end
   local st = _state[identity]
@@ -286,30 +313,26 @@ function M.open(call_opts)
       vim.notify("aws.nvim: no functions in selection", vim.log.levels.WARN)
       return
     end
-    local label = #names == 1
-      and ("Yes, delete " .. names[1])
-      or  ("Yes, delete " .. #names .. " functions")
-    vim.ui.select(
-      { label, "Cancel" },
-      { prompt = "Delete Lambda functions?" },
-      function(_, idx)
-        if not idx or idx ~= 1 then return end
-        local del = require("aws.lambda.delete")
-        local removed = {}
-        local function next_delete(i)
-          if i > #names then
-            remove_from_state(st, removed, buf)
-            return
-          end
-          local name = names[i]
-          del.run(name, function()
-            removed[name] = true
-            next_delete(i + 1)
-          end, call_opts)
-        end
-        next_delete(1)
+    local label = #names == 1 and ("Yes, delete " .. names[1]) or ("Yes, delete " .. #names .. " functions")
+    vim.ui.select({ label, "Cancel" }, { prompt = "Delete Lambda functions?" }, function(_, idx)
+      if not idx or idx ~= 1 then
+        return
       end
-    )
+      local del = require("aws.lambda.delete")
+      local removed = {}
+      local function next_delete(i)
+        if i > #names then
+          remove_from_state(st, removed, buf)
+          return
+        end
+        local name = names[i]
+        del.run(name, function()
+          removed[name] = true
+          next_delete(i + 1)
+        end, call_opts)
+      end
+      next_delete(1)
+    end)
   end
 
   keymaps.apply_lambda(buf, {
@@ -332,12 +355,14 @@ function M.open(call_opts)
       require("aws.cloudwatch.streams").open(log_group, call_opts)
     end,
 
-    delete        = delete_one,
+    delete = delete_one,
     delete_visual = delete_visual,
 
     filter = function()
       vim.ui.input({ prompt = "Filter functions: ", default = st.filter }, function(input)
-        if input == nil then return end
+        if input == nil then
+          return
+        end
         st.filter = input
         if input == "" then
           if st.cache then
@@ -371,7 +396,9 @@ function M.open(call_opts)
       fetch(buf, st, call_opts)
     end,
 
-    close = function() buf_mod.close_split(buf) end,
+    close = function()
+      buf_mod.close_split(buf)
+    end,
   })
 
   if st.cache then

@@ -12,21 +12,16 @@ local spawn = require("aws.spawn")
 ---@param call_opts   AwsCallOpts|nil
 function M.run(bucket_name, on_success, call_opts)
   vim.notify("aws.nvim: deleting bucket " .. bucket_name .. "...", vim.log.levels.INFO)
-  spawn.run(
-    { "s3api", "delete-bucket", "--bucket", bucket_name },
-    function(ok, lines)
-      if not ok then
-        vim.notify(
-          "aws.nvim: delete-bucket failed:\n" .. table.concat(lines, "\n"),
-          vim.log.levels.ERROR
-        )
-        return
-      end
-      vim.notify("aws.nvim: bucket " .. bucket_name .. " deleted", vim.log.levels.INFO)
-      if on_success then on_success() end
-    end,
-    call_opts
-  )
+  spawn.run({ "s3api", "delete-bucket", "--bucket", bucket_name }, function(ok, lines)
+    if not ok then
+      vim.notify("aws.nvim: delete-bucket failed:\n" .. table.concat(lines, "\n"), vim.log.levels.ERROR)
+      return
+    end
+    vim.notify("aws.nvim: bucket " .. bucket_name .. " deleted", vim.log.levels.INFO)
+    if on_success then
+      on_success()
+    end
+  end, call_opts)
 end
 
 --- Ask the user to confirm, then run `s3api delete-bucket --bucket <name>`.
@@ -39,7 +34,9 @@ function M.confirm(bucket_name, on_success, call_opts)
     { "Yes, delete " .. bucket_name, "Cancel" },
     { prompt = "Delete S3 bucket? (bucket must be empty)" },
     function(_, idx)
-      if not idx or idx ~= 1 then return end
+      if not idx or idx ~= 1 then
+        return
+      end
       M.run(bucket_name, on_success, call_opts)
     end
   )

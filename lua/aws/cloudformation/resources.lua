@@ -5,16 +5,16 @@
 --- Lines with a known console URL are underlined; press gx to open in browser.
 local M = {}
 
-local spawn       = require("aws.spawn")
-local buf_mod     = require("aws.buffer")
-local keymaps     = require("aws.keymaps")
-local config      = require("aws.config")
+local spawn = require("aws.spawn")
+local buf_mod = require("aws.buffer")
+local keymaps = require("aws.keymaps")
+local config = require("aws.config")
 local console_url = require("aws.cloudformation.console_url")
 
-local FILETYPE      = "aws-cloudformation"
-local HL_LINK       = "AwsResourceLink"   -- underline on logical_id when URL is available
-local HL_TYPE       = "AwsResourceType"   -- highlight for AWS:: resource type tokens
-local NS_ID         = vim.api.nvim_create_namespace("aws_resource_links")
+local FILETYPE = "aws-cloudformation"
+local HL_LINK = "AwsResourceLink" -- underline on logical_id when URL is available
+local HL_TYPE = "AwsResourceType" -- highlight for AWS:: resource type tokens
+local NS_ID = vim.api.nvim_create_namespace("aws_resource_links")
 
 -- AwsResourceLink: underline only, inherits fg so it works on any colorscheme.
 vim.api.nvim_set_hl(0, HL_LINK, { underline = true, default = true })
@@ -31,12 +31,22 @@ end
 -------------------------------------------------------------------------------
 
 local function status_icon(status)
-  if not status then return "" end
+  if not status then
+    return ""
+  end
   local ic = config.values.icons
-  if status:find("DELETE")      then return ic.deleted      end
-  if status:find("FAILED")      then return ic.failed       end
-  if status:find("IN_PROGRESS") then return ic.in_progress  end
-  if status:find("COMPLETE")    then return ic.complete     end
+  if status:find("DELETE") then
+    return ic.deleted
+  end
+  if status:find("FAILED") then
+    return ic.failed
+  end
+  if status:find("IN_PROGRESS") then
+    return ic.in_progress
+  end
+  if status:find("COMPLETE") then
+    return ic.complete
+  end
   return ic.stack
 end
 
@@ -63,10 +73,14 @@ end
 ---@param raw        string|nil
 ---@return string[]
 local function cdk_path_segments(raw)
-  if not raw then return {} end
+  if not raw then
+    return {}
+  end
 
   local parts = vim.split(raw, "/", { plain = true })
-  if #parts == 0 then return {} end
+  if #parts == 0 then
+    return {}
+  end
 
   -- Strip leading stack-scope segment (CDK always prefixes with the stack id).
   table.remove(parts, 1)
@@ -136,50 +150,49 @@ end
 ---@param region      string
 local function render_tree(nodes, lines, prefix, line_marks, fold_levels, line_offset, depth, region)
   for i, node in ipairs(nodes) do
-    local is_last      = (i == #nodes)
-    local connector    = is_last and "└─ " or "├─ "
+    local is_last = (i == #nodes)
+    local connector = is_last and "└─ " or "├─ "
     local child_prefix = prefix .. (is_last and "   " or "│  ")
-    local fold_n       = depth + 1  -- 1-based fold level for this depth
+    local fold_n = depth + 1 -- 1-based fold level for this depth
 
     if node.resource then
-      local r    = node.resource
+      local r = node.resource
       local icon = status_icon(r.status)
       local phys = r.physical_id or ""
-      if #phys > 50 then phys = phys:sub(1, 47) .. "..." end
+      if #phys > 50 then
+        phys = phys:sub(1, 47) .. "..."
+      end
 
       -- Build the line piece-by-piece so we can track col offsets.
-      local head   = prefix .. connector .. icon .. " "
-      local id_s   = #head                        -- 0-based start of logical_id
-      local id_e   = id_s + #r.logical_id          -- 0-based exclusive end
+      local head = prefix .. connector .. icon .. " "
+      local id_s = #head -- 0-based start of logical_id
+      local id_e = id_s + #r.logical_id -- 0-based exclusive end
 
-      local sep1   = "   "
-      local type_s = id_e + #sep1                  -- 0-based start of type token
-      local type_e = type_s + #r.type              -- 0-based exclusive end
+      local sep1 = "   "
+      local type_s = id_e + #sep1 -- 0-based start of type token
+      local type_e = type_s + #r.type -- 0-based exclusive end
 
-      local line = head .. r.logical_id
-        .. sep1 .. r.type
-        .. "   " .. phys
-        .. "   " .. (r.status or "")
+      local line = head .. r.logical_id .. sep1 .. r.type .. "   " .. phys .. "   " .. (r.status or "")
 
       table.insert(lines, line)
 
-      local lineno = line_offset + #lines  -- 1-based
-      local url    = console_url.build(r.type, r.physical_id, region)
+      local lineno = line_offset + #lines -- 1-based
+      local url = console_url.build(r.type, r.physical_id, region)
       line_marks[lineno] = {
-        url    = url,    -- may be nil if no console link
-        id_s   = id_s,
-        id_e   = id_e,
+        url = url, -- may be nil if no console link
+        id_s = id_s,
+        id_e = id_e,
         type_s = type_s,
         type_e = type_e,
-        rtype  = r.type,
-        phys   = r.physical_id,
+        rtype = r.type,
+        phys = r.physical_id,
       }
       -- Leaf resource: belongs to the current fold level.
       fold_levels[lineno] = tostring(fold_n)
     else
       -- Folder / construct node
       table.insert(lines, prefix .. connector .. " " .. node.name)
-      local lineno = line_offset + #lines  -- 1-based
+      local lineno = line_offset + #lines -- 1-based
       if #node.children > 0 then
         -- Folder with children: opens a new fold so children are inside it.
         fold_levels[lineno] = ">" .. tostring(fold_n)
@@ -206,11 +219,11 @@ end
 local function apply_highlights(buf, line_marks)
   vim.api.nvim_buf_clear_namespace(buf, NS_ID, 0, -1)
   for lineno, m in pairs(line_marks) do
-    local row = lineno - 1  -- 0-based
+    local row = lineno - 1 -- 0-based
 
     -- Highlight the AWS:: type token on every resource line.
     vim.api.nvim_buf_set_extmark(buf, NS_ID, row, m.type_s, {
-      end_col  = m.type_e,
+      end_col = m.type_e,
       hl_group = HL_TYPE,
       priority = 50,
     })
@@ -218,7 +231,7 @@ local function apply_highlights(buf, line_marks)
     -- Underline the logical_id only when a console URL exists.
     if m.url then
       vim.api.nvim_buf_set_extmark(buf, NS_ID, row, m.id_s, {
-        end_col  = m.id_e,
+        end_col = m.id_e,
         hl_group = HL_LINK,
         priority = 60,
       })
@@ -241,8 +254,12 @@ local function fetch(stack_name, buf, call_opts)
 
   local function try_render()
     pending = pending - 1
-    if pending > 0 then return end
-    if not results.resources then return end
+    if pending > 0 then
+      return
+    end
+    if not results.resources then
+      return
+    end
 
     local cdk_paths = results.cdk_paths or {}
     local resources = results.resources
@@ -259,16 +276,22 @@ local function fetch(stack_name, buf, call_opts)
     end)
 
     local has_cdk = next(cdk_paths) ~= nil
-    local tree    = build_tree(resources)
-    local region  = config.resolve_region(call_opts)
-    local count   = #resources
-    local title   = "  Resources (" .. count .. ")  >>  " .. stack_name
-    if region then title = title .. "   [region: " .. region .. "]" end
-    if has_cdk then title = title .. "   (CDK)" end
+    local tree = build_tree(resources)
+    local region = config.resolve_region(call_opts)
+    local count = #resources
+    local title = "  Resources (" .. count .. ")  >>  " .. stack_name
+    if region then
+      title = title .. "   [region: " .. region .. "]"
+    end
+    if has_cdk then
+      title = title .. "   (CDK)"
+    end
 
-    local sep  = "  " .. string.rep("-", 110)
-    local km   = config.values.keymaps.cloudformation
-    local hint = "  " .. (km.refresh or "R") .. " refresh"
+    local sep = "  " .. string.rep("-", 110)
+    local km = config.values.keymaps.cloudformation
+    local hint = "  "
+      .. (km.refresh or "R")
+      .. " refresh"
       .. (km.open_events and ("   |   " .. km.open_events .. " events") or "")
       .. "   |   <CR> open (S3 / CloudWatch)"
       .. "   |   gx open in browser"
@@ -276,7 +299,7 @@ local function fetch(stack_name, buf, call_opts)
     -- Header lines (before the tree).
     local header = { title, sep, "", hint, sep, "" }
     -- line_marks maps 1-based buffer line → { url, id_s, id_e, type_s, type_e }
-    local line_marks  = {}
+    local line_marks = {}
     -- fold_levels maps 1-based buffer line → foldexpr string
     local fold_levels = {}
 
@@ -295,7 +318,7 @@ local function fetch(stack_name, buf, call_opts)
     -- Trailing blank + separator also get fold level 0.
     local total = #out
     fold_levels[total - 1] = "0"
-    fold_levels[total]     = "0"
+    fold_levels[total] = "0"
 
     buf_mod.set_lines(buf, out)
     apply_highlights(buf, line_marks)
@@ -304,7 +327,9 @@ local function fetch(stack_name, buf, call_opts)
     vim.b[buf].aws_resource_line_urls = (function()
       local t = {}
       for lineno, m in pairs(line_marks) do
-        if m.url then t[lineno] = m.url end
+        if m.url then
+          t[lineno] = m.url
+        end
       end
       return t
     end)()
@@ -333,16 +358,20 @@ local function fetch(stack_name, buf, call_opts)
 
   -- ── Request 1: list-stack-resources ────────────────────────────────────────
   spawn.run({
-    "cloudformation", "list-stack-resources",
-    "--stack-name", stack_name,
-    "--query", table.concat({
+    "cloudformation",
+    "list-stack-resources",
+    "--stack-name",
+    stack_name,
+    "--query",
+    table.concat({
       "StackResourceSummaries[*].{",
-        "LogicalId:LogicalResourceId,",
-        "PhysicalId:PhysicalResourceId,",
-        "Type:ResourceType,",
-        "Status:ResourceStatus}",
+      "LogicalId:LogicalResourceId,",
+      "PhysicalId:PhysicalResourceId,",
+      "Type:ResourceType,",
+      "Status:ResourceStatus}",
     }, ""),
-    "--output", "json",
+    "--output",
+    "json",
   }, function(ok, lines)
     if not ok then
       buf_mod.set_error(buf, lines)
@@ -363,11 +392,11 @@ local function fetch(stack_name, buf, call_opts)
     local parsed = {}
     for _, item in ipairs(data) do
       table.insert(parsed, {
-        logical_id  = item.LogicalId  or "",
+        logical_id = item.LogicalId or "",
         physical_id = item.PhysicalId or "",
-        type        = item.Type       or "",
-        status      = item.Status     or "",
-        cdk_path    = nil,
+        type = item.Type or "",
+        status = item.Status or "",
+        cdk_path = nil,
       })
     end
     results.resources = parsed
@@ -376,10 +405,14 @@ local function fetch(stack_name, buf, call_opts)
 
   -- ── Request 2: get-template (for aws:cdk:path metadata) ────────────────────
   spawn.run({
-    "cloudformation", "get-template",
-    "--stack-name", stack_name,
-    "--query", "TemplateBody",
-    "--output", "json",
+    "cloudformation",
+    "get-template",
+    "--stack-name",
+    stack_name,
+    "--query",
+    "TemplateBody",
+    "--output",
+    "json",
   }, function(ok, lines)
     if not ok then
       results.cdk_paths = {}
@@ -445,7 +478,9 @@ end
 ---@return string   foldexpr string ("0", "1", ">1", "2", ">2", …)
 local function resources_foldexpr(lnum)
   local levels = vim.b.aws_fold_levels
-  if not levels then return "0" end
+  if not levels then
+    return "0"
+  end
   return levels[lnum] or "0"
 end
 
@@ -463,7 +498,9 @@ function M.open(stack_name, call_opts)
   buf_mod.open_split(buf)
 
   keymaps.apply_cloudformation_resources(buf, {
-    refresh = function() fetch(stack_name, buf, call_opts) end,
+    refresh = function()
+      fetch(stack_name, buf, call_opts)
+    end,
     open_events = function()
       require("aws.cloudformation.events").open(stack_name, call_opts)
     end,
@@ -472,8 +509,10 @@ function M.open(stack_name, call_opts)
   -- gx: open the console URL for the resource on the current line.
   vim.keymap.set("n", "gx", function()
     local line_urls = vim.b[buf].aws_resource_line_urls
-    if not line_urls then return end
-    local lineno = vim.api.nvim_win_get_cursor(0)[1]  -- 1-based
+    if not line_urls then
+      return
+    end
+    local lineno = vim.api.nvim_win_get_cursor(0)[1] -- 1-based
     local url = line_urls[lineno]
     if not url then
       vim.notify("No console link for this line", vim.log.levels.INFO)
@@ -487,10 +526,10 @@ function M.open(stack_name, call_opts)
       vim.fn.jobstart({ cmd, url }, { detach = true })
     end
   end, {
-    buffer  = buf,
+    buffer = buf,
     noremap = true,
-    silent  = true,
-    desc    = "aws.nvim: open resource in AWS Console",
+    silent = true,
+    desc = "aws.nvim: open resource in AWS Console",
   })
 
   -- <CR>: context-sensitive open for certain resource types.
@@ -498,10 +537,14 @@ function M.open(stack_name, call_opts)
   --   AWS::Logs::LogGroup  → open CloudWatch log streams for the group
   vim.keymap.set("n", "<CR>", function()
     local line_info = vim.b[buf].aws_resource_line_info
-    if not line_info then return end
+    if not line_info then
+      return
+    end
     local lineno = vim.api.nvim_win_get_cursor(0)[1]
-    local info   = line_info[lineno]
-    if not info then return end
+    local info = line_info[lineno]
+    if not info then
+      return
+    end
 
     if info.rtype == "AWS::S3::Bucket" then
       local ok, oil = pcall(require, "oil")
@@ -509,8 +552,8 @@ function M.open(stack_name, call_opts)
         vim.notify("aws.nvim: oil.nvim is required to browse S3 buckets", vim.log.levels.ERROR)
         return
       end
-      local profile  = (call_opts and call_opts.profile) or config.values.default_aws_profile
-      local region_v = (call_opts and call_opts.region)  or config.values.default_aws_region
+      local profile = (call_opts and call_opts.profile) or config.values.default_aws_profile
+      local region_v = (call_opts and call_opts.region) or config.values.default_aws_region
       -- Register creds in the buckets module so BufEnter autocmd stays in sync.
       local buckets_mod = require("aws.s3.buckets")
       if buckets_mod._register_bucket_creds then
@@ -519,29 +562,31 @@ function M.open(stack_name, call_opts)
       -- Apply immediately for the initial oil open.
       local oil_cfg = require("oil.config")
       local new_args = {}
-      if profile  then table.insert(new_args, "--profile=" .. profile)  end
-      if region_v then table.insert(new_args, "--region="  .. region_v) end
+      if profile then
+        table.insert(new_args, "--profile=" .. profile)
+      end
+      if region_v then
+        table.insert(new_args, "--region=" .. region_v)
+      end
       oil_cfg.extra_s3_args = new_args
       local scheme = (vim.version().minor >= 11) and "oil-s3://" or "oil-sss://"
       oil.open(scheme .. info.phys .. "/")
-
     elseif info.rtype == "AWS::Logs::LogGroup" then
       require("aws.cloudwatch.streams").open(info.phys, call_opts)
-
     end
   end, {
-    buffer  = buf,
+    buffer = buf,
     noremap = true,
-    silent  = true,
-    desc    = "aws.nvim: open resource (S3 bucket / CloudWatch log group)",
+    silent = true,
+    desc = "aws.nvim: open resource (S3 bucket / CloudWatch log group)",
   })
 
   -- Set up indent-based folding for this buffer.
   -- Use a Lua foldexpr so we don't pollute the global foldexpr setting.
   vim.api.nvim_buf_call(buf, function()
-    vim.opt_local.foldmethod  = "expr"
-    vim.opt_local.foldexpr    = "v:lua._aws_nvim_resources_foldexpr(v:lnum)"
-    vim.opt_local.foldlevel   = 99   -- start fully open
+    vim.opt_local.foldmethod = "expr"
+    vim.opt_local.foldexpr = "v:lua._aws_nvim_resources_foldexpr(v:lnum)"
+    vim.opt_local.foldlevel = 99 -- start fully open
     vim.opt_local.foldminlines = 0
   end)
 

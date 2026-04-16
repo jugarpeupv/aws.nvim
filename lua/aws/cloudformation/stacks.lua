@@ -1,10 +1,10 @@
 --- aws.nvim – CloudFormation stacks list, filter, and render
 local M = {}
 
-local spawn   = require("aws.spawn")
+local spawn = require("aws.spawn")
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local FILETYPE = "aws-cloudformation"
 
@@ -17,7 +17,7 @@ local FILETYPE = "aws-cloudformation"
 ---@field profile  string|nil
 
 --- state keyed by identity string (e.g. "us-east-1" or "prod@eu-west-1")
-local _state = {}  -- identity -> CfStacksState
+local _state = {} -- identity -> CfStacksState
 
 local function buf_name(identity)
   return "aws://cloudformation/stacks/" .. identity
@@ -33,28 +33,50 @@ end
 ---@return string
 local function pad_right(s, width)
   local len = #s
-  if len >= width then return s end
+  if len >= width then
+    return s
+  end
   return s .. string.rep(" ", width - len)
 end
 
 local function status_icon(status)
   local ic = config.values.icons
-  if status:find("DELETE")      then return ic.deleted      end
-  if status:find("FAILED")      then return ic.failed       end
-  if status:find("IN_PROGRESS") then return ic.in_progress  end
-  if status:find("COMPLETE")    then return ic.complete     end
+  if status:find("DELETE") then
+    return ic.deleted
+  end
+  if status:find("FAILED") then
+    return ic.failed
+  end
+  if status:find("IN_PROGRESS") then
+    return ic.in_progress
+  end
+  if status:find("COMPLETE") then
+    return ic.complete
+  end
   return ic.stack
 end
 
 local function hint_line()
   local km = config.values.keymaps.cloudformation
   local hints = {}
-  if km.open_resources then table.insert(hints, km.open_resources .. " resources") end
-  if km.open_events    then table.insert(hints, km.open_events    .. " events")    end
-  if km.delete         then table.insert(hints, km.delete         .. " delete")    end
-  if km.filter         then table.insert(hints, km.filter         .. " filter")    end
-  if km.clear_filter   then table.insert(hints, km.clear_filter   .. " clear")     end
-  if km.refresh        then table.insert(hints, km.refresh        .. " refresh")   end
+  if km.open_resources then
+    table.insert(hints, km.open_resources .. " resources")
+  end
+  if km.open_events then
+    table.insert(hints, km.open_events .. " events")
+  end
+  if km.delete then
+    table.insert(hints, km.delete .. " delete")
+  end
+  if km.filter then
+    table.insert(hints, km.filter .. " filter")
+  end
+  if km.clear_filter then
+    table.insert(hints, km.clear_filter .. " clear")
+  end
+  if km.refresh then
+    table.insert(hints, km.refresh .. " refresh")
+  end
   return table.concat(hints, "  |  ")
 end
 
@@ -80,13 +102,17 @@ local function render(buf, st)
   for _, s in ipairs(st.stacks) do
     local name = s.StackName or ""
     if st.filter == "" or name:lower():find(st.filter:lower(), 1, true) then
-      if #name > col_width then col_width = #name end
+      if #name > col_width then
+        col_width = #name
+      end
     end
   end
   col_width = col_width + 2
 
   local title = "CloudFormation Stacks"
-    .. "   [region: " .. st.region .. "]"
+    .. "   [region: "
+    .. st.region
+    .. "]"
     .. (st.profile and ("   [profile: " .. st.profile .. "]") or "")
     .. (st.filter ~= "" and ("   [filter: " .. st.filter .. "]") or "")
 
@@ -99,12 +125,10 @@ local function render(buf, st)
   st.line_map = {}
 
   for _, s in ipairs(st.stacks) do
-    local name   = s.StackName   or ""
+    local name = s.StackName or ""
     local status = s.StackStatus or "UNKNOWN"
     if st.filter == "" or name:lower():find(st.filter:lower(), 1, true) then
-      table.insert(lines,
-        status_icon(status) .. " " .. pad_right(name, col_width) .. "  " .. status
-      )
+      table.insert(lines, status_icon(status) .. " " .. pad_right(name, col_width) .. "  " .. status)
       st.line_map[#lines] = name
     end
   end
@@ -126,8 +150,10 @@ local function fetch(buf, st, call_opts)
 
   local function fetch_page(next_token)
     local args = {
-      "cloudformation", "describe-stacks",
-      "--output", "json",
+      "cloudformation",
+      "describe-stacks",
+      "--output",
+      "json",
       "--no-paginate",
     }
     if next_token then
@@ -150,7 +176,9 @@ local function fetch(buf, st, call_opts)
         table.insert(all, { StackName = s.StackName, StackStatus = s.StackStatus })
       end
 
-      table.sort(all, function(a, b) return (a.StackName or "") < (b.StackName or "") end)
+      table.sort(all, function(a, b)
+        return (a.StackName or "") < (b.StackName or "")
+      end)
       st.stacks = all
       render(buf, st)
 
@@ -179,7 +207,7 @@ end
 ---@return string[]
 local function stacks_in_range(st, r1, r2)
   local names = {}
-  local seen  = {}
+  local seen = {}
   for row = r1, r2 do
     local name = st.line_map[row]
     if name and not seen[name] then
@@ -217,11 +245,11 @@ function M.open(call_opts)
   -- Initialise state for this identity if this is the first open.
   if not _state[identity] then
     _state[identity] = {
-      stacks   = {},
-      filter   = "",
+      stacks = {},
+      filter = "",
       line_map = {},
-      region   = config.resolve_region(call_opts),
-      profile  = config.resolve_profile(call_opts),
+      region = config.resolve_region(call_opts),
+      profile = config.resolve_profile(call_opts),
     }
   end
   local st = _state[identity]
@@ -245,29 +273,25 @@ function M.open(call_opts)
       vim.notify("aws.nvim: no stacks in selection", vim.log.levels.WARN)
       return
     end
-    local label = #names == 1
-      and ("Yes, delete " .. names[1])
-      or  ("Yes, delete " .. #names .. " stacks")
-    vim.ui.select(
-      { label, "Cancel" },
-      { prompt = "Delete CloudFormation stacks?" },
-      function(_, idx)
-        if not idx or idx ~= 1 then return end
-        local removed = {}
-        local function next_delete(i)
-          if i > #names then
-            remove_from_state(st, removed, buf)
-            return
-          end
-          local name = names[i]
-          delete_mod.run(name, function()
-            removed[name] = true
-            next_delete(i + 1)
-          end, call_opts)
-        end
-        next_delete(1)
+    local label = #names == 1 and ("Yes, delete " .. names[1]) or ("Yes, delete " .. #names .. " stacks")
+    vim.ui.select({ label, "Cancel" }, { prompt = "Delete CloudFormation stacks?" }, function(_, idx)
+      if not idx or idx ~= 1 then
+        return
       end
-    )
+      local removed = {}
+      local function next_delete(i)
+        if i > #names then
+          remove_from_state(st, removed, buf)
+          return
+        end
+        local name = names[i]
+        delete_mod.run(name, function()
+          removed[name] = true
+          next_delete(i + 1)
+        end, call_opts)
+      end
+      next_delete(1)
+    end)
   end
 
   keymaps.apply_cloudformation(buf, {
@@ -289,12 +313,14 @@ function M.open(call_opts)
       require("aws.cloudformation.events").open(name, call_opts)
     end,
 
-    delete        = delete_one,
+    delete = delete_one,
     delete_visual = delete_visual,
 
     filter = function()
       vim.ui.input({ prompt = "Filter stacks: ", default = st.filter }, function(input)
-        if input == nil then return end
+        if input == nil then
+          return
+        end
         st.filter = input
         render(buf, st)
       end)
@@ -305,9 +331,13 @@ function M.open(call_opts)
       render(buf, st)
     end,
 
-    refresh = function() fetch(buf, st, call_opts) end,
+    refresh = function()
+      fetch(buf, st, call_opts)
+    end,
 
-    close = function() buf_mod.close_split(buf) end,
+    close = function()
+      buf_mod.close_split(buf)
+    end,
   })
 
   fetch(buf, st, call_opts)
@@ -317,8 +347,10 @@ end
 function M.refresh(call_opts)
   local identity = config.identity(call_opts)
   local buf = buf_mod.get_or_create(buf_name(identity), FILETYPE)
-  local st  = _state[identity]
-  if st then fetch(buf, st, call_opts) end
+  local st = _state[identity]
+  if st then
+    fetch(buf, st, call_opts)
+  end
 end
 
 return M

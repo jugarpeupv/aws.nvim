@@ -1,10 +1,10 @@
 --- aws.nvim – CloudWatch log events viewer for a specific stream
 local M = {}
 
-local spawn   = require("aws.spawn")
+local spawn = require("aws.spawn")
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local FILETYPE = "aws-cloudwatch"
 
@@ -20,11 +20,15 @@ local function fetch(group_name, stream_name, buf, call_opts)
   buf_mod.set_loading(buf)
 
   spawn.run({
-    "logs", "get-log-events",
-    "--log-group-name",  group_name,
-    "--log-stream-name", stream_name,
+    "logs",
+    "get-log-events",
+    "--log-group-name",
+    group_name,
+    "--log-stream-name",
+    stream_name,
     "--start-from-head",
-    "--output", "json",
+    "--output",
+    "json",
   }, function(ok, lines)
     if not ok then
       buf_mod.set_error(buf, lines)
@@ -42,8 +46,10 @@ local function fetch(group_name, stream_name, buf, call_opts)
 
     local sep = string.rep("-", 100)
     local region = config.resolve_region(call_opts)
-    local title  = "Log Events  >>  " .. group_name .. "  /  " .. stream_name
-    if region then title = title .. "   [region: " .. region .. "]" end
+    local title = "Log Events  >>  " .. group_name .. "  /  " .. stream_name
+    if region then
+      title = title .. "   [region: " .. region .. "]"
+    end
     local out = {
       sep,
       "R refresh",
@@ -57,11 +63,11 @@ local function fetch(group_name, stream_name, buf, call_opts)
       table.insert(out, "(no events)")
     else
       for _, ev in ipairs(events) do
-        local ts  = ev.timestamp
+        local ts = ev.timestamp
         local time = ts and os.date("%Y-%m-%d %H:%M:%S", math.floor(ts / 1000)) or "?"
         -- Each event message may contain embedded newlines — split and indent them
         local msg = ev.message or ""
-        msg = msg:gsub("\n$", "")  -- strip trailing newline
+        msg = msg:gsub("\n$", "") -- strip trailing newline
         local first = true
         for part in (msg .. "\n"):gmatch("([^\n]*)\n") do
           if first then
@@ -94,8 +100,12 @@ function M.open(group_name, stream_name, call_opts)
   buf_mod.open_vsplit(buf)
 
   keymaps.apply_cloudwatch_logs(buf, {
-    refresh = function() fetch(group_name, stream_name, buf, call_opts) end,
-    close   = function() buf_mod.close_vsplit(buf) end,
+    refresh = function()
+      fetch(group_name, stream_name, buf, call_opts)
+    end,
+    close = function()
+      buf_mod.close_vsplit(buf)
+    end,
   })
 
   fetch(group_name, stream_name, buf, call_opts)

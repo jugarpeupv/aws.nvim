@@ -3,10 +3,10 @@
 --- Fires two parallel calls: describe-clusters + list/describe-services.
 local M = {}
 
-local spawn   = require("aws.spawn")
+local spawn = require("aws.spawn")
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local FILETYPE = "aws-ecs"
 
@@ -22,7 +22,7 @@ end
 ---@field region   string
 ---@field profile  string|nil
 
-local _state = {}  -- cluster_arn -> EcsDetailState
+local _state = {} -- cluster_arn -> EcsDetailState
 
 -------------------------------------------------------------------------------
 -- Helpers
@@ -33,7 +33,9 @@ local _state = {}  -- cluster_arn -> EcsDetailState
 ---@return string
 local function pad_right(s, width)
   local display_len = vim.fn.strdisplaywidth(s)
-  if display_len >= width then return s end
+  if display_len >= width then
+    return s
+  end
   return s .. string.rep(" ", width - display_len)
 end
 
@@ -48,12 +50,14 @@ end
 ---@param cluster_arn string
 local function render(buf, cluster_arn)
   local st = _state[cluster_arn]
-  if not st then return end
+  if not st then
+    return
+  end
 
   local cluster = st.cluster or {}
-  local region  = st.region
+  local region = st.region
   local profile = st.profile
-  local km      = config.values.keymaps.ecs
+  local km = config.values.keymaps.ecs
 
   local lines = {}
   local LABEL = 32
@@ -66,19 +70,24 @@ local function render(buf, cluster_arn)
 
   -- ── Title ──────────────────────────────────────────────────────────────────
   table.insert(lines, "")
-  local title = "ECS  >>  " .. cname
-    .. "   [region: " .. region .. "]"
+  local title = "ECS  >>  "
+    .. cname
+    .. "   [region: "
+    .. region
+    .. "]"
     .. (profile and ("   [profile: " .. profile .. "]") or "")
   table.insert(lines, title)
   table.insert(lines, "")
 
   local sep_len = math.max(vim.fn.strdisplaywidth(title), 72)
-  local sep     = string.rep("-", sep_len)
+  local sep = string.rep("-", sep_len)
   table.insert(lines, sep)
 
   -- ── Hint line ──────────────────────────────────────────────────────────────
   local hints = {}
-  if km.detail_refresh then table.insert(hints, km.detail_refresh .. " refresh") end
+  if km.detail_refresh then
+    table.insert(hints, km.detail_refresh .. " refresh")
+  end
   if #hints > 0 then
     table.insert(lines, table.concat(hints, "  |  "))
     table.insert(lines, sep)
@@ -87,28 +96,31 @@ local function render(buf, cluster_arn)
   -- ── Cluster General ────────────────────────────────────────────────────────
   table.insert(lines, "Cluster")
   table.insert(lines, sep)
-  row("Name",                    cluster.clusterName or cname)
-  row("ARN",                     cluster.clusterArn  or cluster_arn)
-  row("Status",                  cluster.status)
-  row("Registered Instances",    tostring(cluster.registeredContainerInstancesCount or 0))
-  row("Running Tasks",           tostring(cluster.runningTasksCount  or 0))
-  row("Pending Tasks",           tostring(cluster.pendingTasksCount  or 0))
-  row("Active Services",         tostring(cluster.activeServicesCount or 0))
+  row("Name", cluster.clusterName or cname)
+  row("ARN", cluster.clusterArn or cluster_arn)
+  row("Status", cluster.status)
+  row("Registered Instances", tostring(cluster.registeredContainerInstancesCount or 0))
+  row("Running Tasks", tostring(cluster.runningTasksCount or 0))
+  row("Pending Tasks", tostring(cluster.pendingTasksCount or 0))
+  row("Active Services", tostring(cluster.activeServicesCount or 0))
 
   -- Capacity providers
   local caps = type(cluster.capacityProviders) == "table" and cluster.capacityProviders or {}
-  row("Capacity Providers",
-    #caps > 0 and table.concat(caps, ", ") or "—")
+  row("Capacity Providers", #caps > 0 and table.concat(caps, ", ") or "—")
 
   -- Default capacity provider strategy
-  local strats = type(cluster.defaultCapacityProviderStrategy) == "table"
-    and cluster.defaultCapacityProviderStrategy or {}
+  local strats = type(cluster.defaultCapacityProviderStrategy) == "table" and cluster.defaultCapacityProviderStrategy
+    or {}
   if #strats > 0 then
     local parts = {}
     for _, s in ipairs(strats) do
       local p = (s.capacityProvider or "?")
-      if s.weight then p = p .. " w=" .. s.weight end
-      if s.base   then p = p .. " base=" .. s.base end
+      if s.weight then
+        p = p .. " w=" .. s.weight
+      end
+      if s.base then
+        p = p .. " base=" .. s.base
+      end
       table.insert(parts, p)
     end
     row("Default Cap. Strategy", table.concat(parts, ", "))
@@ -118,7 +130,9 @@ local function render(buf, cluster_arn)
   local tags = type(cluster.tags) == "table" and cluster.tags or {}
   local tag_parts = {}
   for _, t in ipairs(tags) do
-    if t.key then table.insert(tag_parts, t.key .. "=" .. (t.value or "")) end
+    if t.key then
+      table.insert(tag_parts, t.key .. "=" .. (t.value or ""))
+    end
   end
   table.sort(tag_parts)
   row("Tags", #tag_parts > 0 and table.concat(tag_parts, ", ") or "—")
@@ -150,60 +164,71 @@ local function render(buf, cluster_arn)
       table.insert(lines, "  (none)")
     else
       -- Column widths for the services table
-      local nm_w  = 4   -- "Name"
-      local st_w  = 6   -- "Status"
-      local lt_w  = 8   -- "Launch"
+      local nm_w = 4 -- "Name"
+      local st_w = 6 -- "Status"
+      local lt_w = 8 -- "Launch"
       for _, svc in ipairs(sorted) do
         local nw = vim.fn.strdisplaywidth(svc.serviceName or "")
-        if nw > nm_w then nm_w = nw end
+        if nw > nm_w then
+          nm_w = nw
+        end
       end
       nm_w = nm_w + 2
       st_w = st_w + 2
       lt_w = lt_w + 2
 
       -- Header
-      table.insert(lines,
-        "  " .. pad_right("Name",   nm_w)
-             .. pad_right("Status", st_w)
-             .. pad_right("Launch", lt_w)
-             .. pad_right("Des",    6)
-             .. pad_right("Run",    6)
-             .. pad_right("Pend",   6)
-             .. "Task Definition"
+      table.insert(
+        lines,
+        "  "
+          .. pad_right("Name", nm_w)
+          .. pad_right("Status", st_w)
+          .. pad_right("Launch", lt_w)
+          .. pad_right("Des", 6)
+          .. pad_right("Run", 6)
+          .. pad_right("Pend", 6)
+          .. "Task Definition"
       )
       table.insert(lines, "  " .. string.rep("-", nm_w + st_w + lt_w + 30))
 
       for _, svc in ipairs(sorted) do
-        local sname  = svc.serviceName or "—"
-        local sstatus = svc.status      or "—"
-        local launch  = svc.launchType  or
-          (type(svc.capacityProviderStrategy) == "table"
-            and #svc.capacityProviderStrategy > 0
-            and "CAP_PROV" or "—")
-        local desired = tostring(svc.desiredCount  or 0)
-        local running = tostring(svc.runningCount  or 0)
-        local pending = tostring(svc.pendingCount  or 0)
+        local sname = svc.serviceName or "—"
+        local sstatus = svc.status or "—"
+        local launch = svc.launchType
+          or (
+            type(svc.capacityProviderStrategy) == "table" and #svc.capacityProviderStrategy > 0 and "CAP_PROV" or "—"
+          )
+        local desired = tostring(svc.desiredCount or 0)
+        local running = tostring(svc.runningCount or 0)
+        local pending = tostring(svc.pendingCount or 0)
         local taskdef = short_name(svc.taskDefinition or "—")
 
-        table.insert(lines,
-          "  " .. pad_right(sname,   nm_w)
-               .. pad_right(sstatus, st_w)
-               .. pad_right(launch,  lt_w)
-               .. pad_right(desired, 6)
-               .. pad_right(running, 6)
-               .. pad_right(pending, 6)
-               .. taskdef
+        table.insert(
+          lines,
+          "  "
+            .. pad_right(sname, nm_w)
+            .. pad_right(sstatus, st_w)
+            .. pad_right(launch, lt_w)
+            .. pad_right(desired, 6)
+            .. pad_right(running, 6)
+            .. pad_right(pending, 6)
+            .. taskdef
         )
 
         -- Show deployment info if there are active deployments
         local deps = type(svc.deployments) == "table" and svc.deployments or {}
         for _, dep in ipairs(deps) do
           if dep.status ~= "PRIMARY" then
-            table.insert(lines,
-              "    deployment " .. (dep.status or "?")
-              .. "  des=" .. tostring(dep.desiredCount or 0)
-              .. "  run=" .. tostring(dep.runningCount or 0)
-              .. "  pend=" .. tostring(dep.pendingCount or 0)
+            table.insert(
+              lines,
+              "    deployment "
+                .. (dep.status or "?")
+                .. "  des="
+                .. tostring(dep.desiredCount or 0)
+                .. "  run="
+                .. tostring(dep.runningCount or 0)
+                .. "  pend="
+                .. tostring(dep.pendingCount or 0)
             )
           end
         end
@@ -243,10 +268,10 @@ end
 ---@param call_opts   AwsCallOpts|nil
 ---@param on_done     fun(services: table[])
 local function fetch_services(cluster_arn, buf, call_opts, on_done)
-  local all_arns    = {}
-  local all_svcs    = {}
+  local all_arns = {}
+  local all_svcs = {}
   local batch_total = 0
-  local batch_done  = 0
+  local batch_done = 0
 
   local function describe_batch(arns)
     local args = { "ecs", "describe-services", "--cluster", cluster_arn, "--services" }
@@ -276,7 +301,7 @@ local function fetch_services(cluster_arn, buf, call_opts, on_done)
     end
     -- Split into batches of 10
     local batches = {}
-    local batch   = {}
+    local batch = {}
     for _, arn in ipairs(all_arns) do
       table.insert(batch, arn)
       if #batch == 10 then
@@ -284,7 +309,9 @@ local function fetch_services(cluster_arn, buf, call_opts, on_done)
         batch = {}
       end
     end
-    if #batch > 0 then table.insert(batches, batch) end
+    if #batch > 0 then
+      table.insert(batches, batch)
+    end
     batch_total = #batches
     for _, b in ipairs(batches) do
       describe_batch(b)
@@ -293,9 +320,12 @@ local function fetch_services(cluster_arn, buf, call_opts, on_done)
 
   local function list_page(next_token)
     local args = {
-      "ecs", "list-services",
-      "--cluster", cluster_arn,
-      "--output", "json",
+      "ecs",
+      "list-services",
+      "--cluster",
+      cluster_arn,
+      "--output",
+      "json",
     }
     if next_token then
       vim.list_extend(args, { "--next-token", next_token })
@@ -333,28 +363,35 @@ end
 local function fetch(cluster_arn, buf, call_opts)
   buf_mod.set_loading(buf)
 
-  local partial  = { cluster = nil, services = nil }
-  local pending  = 2   -- cluster + services
+  local partial = { cluster = nil, services = nil }
+  local pending = 2 -- cluster + services
 
   local function on_done()
     pending = pending - 1
-    if pending > 0 then return end
+    if pending > 0 then
+      return
+    end
     local existing = _state[cluster_arn] or {}
     _state[cluster_arn] = {
-      cluster  = partial.cluster  or existing.cluster  or {},
+      cluster = partial.cluster or existing.cluster or {},
       services = partial.services or existing.services or {},
-      region   = config.resolve_region(call_opts),
-      profile  = config.resolve_profile(call_opts),
+      region = config.resolve_region(call_opts),
+      profile = config.resolve_profile(call_opts),
     }
     render(buf, cluster_arn)
   end
 
   -- ── describe-clusters ──────────────────────────────────────────────────────
   spawn.run({
-    "ecs", "describe-clusters",
-    "--clusters", cluster_arn,
-    "--include", "STATISTICS", "TAGS",
-    "--output", "json",
+    "ecs",
+    "describe-clusters",
+    "--clusters",
+    cluster_arn,
+    "--include",
+    "STATISTICS",
+    "TAGS",
+    "--output",
+    "json",
   }, function(ok, lines)
     if not ok then
       partial.cluster = { clusterArn = cluster_arn }
@@ -363,9 +400,7 @@ local function fetch(cluster_arn, buf, call_opts)
     end
     local raw = table.concat(lines, "\n")
     local ok2, data = pcall(vim.json.decode, raw)
-    if ok2 and type(data) == "table"
-       and type(data.clusters) == "table"
-       and data.clusters[1] then
+    if ok2 and type(data) == "table" and type(data.clusters) == "table" and data.clusters[1] then
       partial.cluster = data.clusters[1]
     else
       partial.cluster = { clusterArn = cluster_arn }

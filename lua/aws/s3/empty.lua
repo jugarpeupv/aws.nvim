@@ -12,10 +12,14 @@ local spawn = require("aws.spawn")
 local function delete_all_versions(bucket_name, call_opts, on_done)
   -- List up to 1000 versions+delete-markers in one call
   spawn.run({
-    "s3api", "list-object-versions",
-    "--bucket", bucket_name,
-    "--output", "json",
-    "--query", "{Versions:Versions,DeleteMarkers:DeleteMarkers}",
+    "s3api",
+    "list-object-versions",
+    "--bucket",
+    bucket_name,
+    "--output",
+    "json",
+    "--query",
+    "{Versions:Versions,DeleteMarkers:DeleteMarkers}",
   }, function(ok, lines)
     if not ok then
       on_done(false, table.concat(lines, "\n"))
@@ -31,7 +35,7 @@ local function delete_all_versions(bucket_name, call_opts, on_done)
 
     -- Build a flat list of {Key, VersionId} for both versions and markers
     local objects = {}
-    for _, entry in ipairs(type(data.Versions)      == "table" and data.Versions      or {}) do
+    for _, entry in ipairs(type(data.Versions) == "table" and data.Versions or {}) do
       table.insert(objects, { Key = entry.Key, VersionId = entry.VersionId })
     end
     for _, entry in ipairs(type(data.DeleteMarkers) == "table" and data.DeleteMarkers or {}) do
@@ -53,9 +57,12 @@ local function delete_all_versions(bucket_name, call_opts, on_done)
     end
 
     spawn.run({
-      "s3api", "delete-objects",
-      "--bucket", bucket_name,
-      "--delete", payload,
+      "s3api",
+      "delete-objects",
+      "--bucket",
+      bucket_name,
+      "--delete",
+      payload,
     }, function(ok3, err_lines)
       if not ok3 then
         on_done(false, table.concat(err_lines, "\n"))
@@ -76,14 +83,13 @@ function M.run(bucket_name, on_success, call_opts)
   vim.notify("aws.nvim: emptying bucket " .. bucket_name .. "...", vim.log.levels.INFO)
   delete_all_versions(bucket_name, call_opts, function(ok, err)
     if not ok then
-      vim.notify(
-        "aws.nvim: failed to empty bucket:\n" .. (err or "unknown error"),
-        vim.log.levels.ERROR
-      )
+      vim.notify("aws.nvim: failed to empty bucket:\n" .. (err or "unknown error"), vim.log.levels.ERROR)
       return
     end
     vim.notify("aws.nvim: bucket " .. bucket_name .. " emptied", vim.log.levels.INFO)
-    if on_success then on_success() end
+    if on_success then
+      on_success()
+    end
   end)
 end
 
@@ -98,7 +104,9 @@ function M.confirm(bucket_name, on_success, call_opts)
     { "Yes, empty " .. bucket_name, "Cancel" },
     { prompt = "Empty S3 bucket? (all objects and versions will be deleted)" },
     function(_, idx)
-      if not idx or idx ~= 1 then return end
+      if not idx or idx ~= 1 then
+        return
+      end
       M.run(bucket_name, on_success, call_opts)
     end
   )

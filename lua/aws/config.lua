@@ -177,129 +177,129 @@ local M = {}
 local defaults = {
   -- Auth is delegated to the user; these are optional convenience defaults.
   default_aws_profile = nil,
-  default_aws_region  = nil,
+  default_aws_region = nil,
 
   icons = {
-    stack       = " ",
-    complete    = " ",
-    failed      = " ",
+    stack = " ",
+    complete = " ",
+    failed = " ",
     in_progress = " ",
-    deleted     = " ",
+    deleted = " ",
   },
 
   keymaps = {
     cloudformation = {
       open_resources = "<CR>",
-      open_events    = "E",
-      delete         = "dd",
-      filter         = "F",
-      clear_filter   = "C",
-      refresh        = "R",
-      close          = "q",
+      open_events = "E",
+      delete = "dd",
+      filter = "F",
+      clear_filter = "C",
+      refresh = "R",
+      close = "q",
     },
     s3 = {
-      open_bucket  = "<CR>",
-      empty        = "de",
-      delete       = "dd",
-      filter       = "F",
+      open_bucket = "<CR>",
+      empty = "de",
+      delete = "dd",
+      filter = "F",
       clear_filter = "C",
-      refresh      = "R",
-      close        = "q",
+      refresh = "R",
+      close = "q",
     },
     cloudwatch = {
       open_streams = "<CR>",
-      open_logs    = "<CR>",
-      delete       = "dd",
-      filter       = "F",
+      open_logs = "<CR>",
+      delete = "dd",
+      filter = "F",
       clear_filter = "C",
-      refresh      = "R",
-      close        = "q",
+      refresh = "R",
+      close = "q",
     },
     lambda = {
-      open_detail  = "<CR>",
-      open_logs    = "L",
-      delete       = "dd",
-      filter       = "F",
+      open_detail = "<CR>",
+      open_logs = "L",
+      delete = "dd",
+      filter = "F",
       clear_filter = "C",
-      refresh      = "R",
-      close        = "q",
-      detail_logs  = "L",
+      refresh = "R",
+      close = "q",
+      detail_logs = "L",
     },
     acm = {
-      open_detail    = "<CR>",
-      delete         = "dd",
-      filter         = "F",
-      clear_filter   = "C",
-      refresh        = "R",
+      open_detail = "<CR>",
+      delete = "dd",
+      filter = "F",
+      clear_filter = "C",
+      refresh = "R",
       detail_refresh = "R",
     },
     secretsmanager = {
-      open_detail    = "<CR>",
-      delete         = "dd",
-      filter         = "F",
-      clear_filter   = "C",
-      refresh        = "R",
+      open_detail = "<CR>",
+      delete = "dd",
+      filter = "F",
+      clear_filter = "C",
+      refresh = "R",
       detail_refresh = "R",
-      reveal         = "gS",
+      reveal = "gS",
     },
     cloudfront = {
-      open_detail       = "<CR>",
-      invalidate        = "I",
-      filter            = "F",
-      clear_filter      = "C",
-      refresh           = "R",
-      detail_refresh    = "R",
+      open_detail = "<CR>",
+      invalidate = "I",
+      filter = "F",
+      clear_filter = "C",
+      refresh = "R",
+      detail_refresh = "R",
       detail_invalidate = "I",
     },
     apigateway = {
-      open_detail    = "<CR>",
-      filter         = "F",
-      clear_filter   = "C",
-      refresh        = "R",
+      open_detail = "<CR>",
+      filter = "F",
+      clear_filter = "C",
+      refresh = "R",
       detail_refresh = "R",
     },
     ecs = {
-      open_detail    = "<CR>",
-      filter         = "F",
-      clear_filter   = "C",
-      refresh        = "R",
+      open_detail = "<CR>",
+      filter = "F",
+      clear_filter = "C",
+      refresh = "R",
       detail_refresh = "R",
     },
     iam = {
-      open_list      = "<CR>",
-      open_detail    = "<CR>",
-      filter         = "F",
-      clear_filter   = "C",
-      toggle_scope   = "T",
-      refresh        = "R",
+      open_list = "<CR>",
+      open_detail = "<CR>",
+      filter = "F",
+      clear_filter = "C",
+      toggle_scope = "T",
+      refresh = "R",
       detail_refresh = "R",
     },
     vpc = {
-      open_detail    = "<CR>",
-      filter         = "F",
-      clear_filter   = "C",
-      refresh        = "R",
+      open_detail = "<CR>",
+      filter = "F",
+      clear_filter = "C",
+      refresh = "R",
       detail_refresh = "R",
     },
     dynamodb = {
-      open_menu      = "<CR>",
-      delete         = "dd",
-      filter         = "F",
-      clear_filter   = "C",
-      refresh        = "R",
-      menu_open      = "<CR>",
-      menu_refresh   = "R",
+      open_menu = "<CR>",
+      delete = "dd",
+      filter = "F",
+      clear_filter = "C",
+      refresh = "R",
+      menu_open = "<CR>",
+      menu_refresh = "R",
       detail_refresh = "R",
-      scan_run       = "R",
-      scan_next      = "n",
-      scan_json      = "J",
+      scan_run = "R",
+      scan_next = "n",
+      scan_json = "J",
     },
     ec2 = {
-      open_detail    = "<CR>",
-      filter         = "F",
-      clear_filter   = "C",
-      refresh        = "R",
-      close          = "q",
+      open_detail = "<CR>",
+      filter = "F",
+      clear_filter = "C",
+      refresh = "R",
+      close = "q",
       detail_refresh = "R",
     },
   },
@@ -320,9 +320,13 @@ end
 function M.env_overrides(call_opts)
   local env = {}
   local profile = (call_opts and call_opts.profile) or M.values.default_aws_profile
-  local region  = (call_opts and call_opts.region)  or M.values.default_aws_region
-  if profile then env["AWS_PROFILE"]        = profile end
-  if region  then env["AWS_DEFAULT_REGION"] = region  end
+  local region = (call_opts and call_opts.region) or M.values.default_aws_region
+  if profile then
+    env["AWS_PROFILE"] = profile
+  end
+  if region then
+    env["AWS_DEFAULT_REGION"] = region
+  end
   return env
 end
 
@@ -331,9 +335,7 @@ end
 ---@param call_opts AwsCallOpts|nil
 ---@return string|nil
 function M.resolve_profile(call_opts)
-  return (call_opts and call_opts.profile)
-    or M.values.default_aws_profile
-    or vim.fn.environ()["AWS_PROFILE"]
+  return (call_opts and call_opts.profile) or M.values.default_aws_profile or vim.fn.environ()["AWS_PROFILE"]
 end
 
 --- Resolve the effective AWS region for display purposes.
@@ -345,15 +347,18 @@ function M.resolve_region(call_opts)
   local explicit = (call_opts and call_opts.region)
     or M.values.default_aws_region
     or vim.fn.environ()["AWS_DEFAULT_REGION"]
-  if explicit then return explicit end
+  if explicit then
+    return explicit
+  end
 
   -- Fall back to reading ~/.aws/config via the CLI (fast, no network call).
   local profile = M.resolve_profile(call_opts)
-  local cmd = profile
-    and ("aws configure get region --profile " .. vim.fn.shellescape(profile))
-    or  "aws configure get region"
+  local cmd = profile and ("aws configure get region --profile " .. vim.fn.shellescape(profile))
+    or "aws configure get region"
   local result = vim.fn.trim(vim.fn.system(cmd))
-  if result ~= "" then return result end
+  if result ~= "" then
+    return result
+  end
 
   return "unknown"
 end
@@ -362,7 +367,7 @@ end
 ---@param call_opts AwsCallOpts|nil
 ---@return string
 function M.identity(call_opts)
-  local region  = M.resolve_region(call_opts)
+  local region = M.resolve_region(call_opts)
   local profile = M.resolve_profile(call_opts)
   if profile then
     return profile .. "@" .. region

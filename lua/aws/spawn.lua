@@ -9,7 +9,9 @@ local M = {}
 ---@return string[]|nil  nil when there are no overrides (inherit env as-is)
 local function build_env(call_opts)
   local overrides = require("aws.config").env_overrides(call_opts)
-  if not next(overrides) then return nil end
+  if not next(overrides) then
+    return nil
+  end
 
   local current = vim.fn.environ()
   for k, v in pairs(overrides) do
@@ -39,29 +41,35 @@ function M.run(args, cb, call_opts)
 
   local handle
   handle = vim.loop.spawn("aws", {
-    args  = args,
+    args = args,
     stdio = { nil, stdout, stderr },
-    env   = build_env(call_opts),
+    env = build_env(call_opts),
   }, function(code)
     stdout:close()
     stderr:close()
     handle:close()
 
-    local ok  = (code == 0)
+    local ok = (code == 0)
     local raw = ok and table.concat(out_chunks) or table.concat(err_chunks)
     local lines = vim.split(raw, "\n", { plain = true, trimempty = true })
 
-    vim.schedule(function() cb(ok, lines) end)
+    vim.schedule(function()
+      cb(ok, lines)
+    end)
   end)
 
   stdout:read_start(function(err, data)
     assert(not err, err)
-    if data then table.insert(out_chunks, data) end
+    if data then
+      table.insert(out_chunks, data)
+    end
   end)
 
   stderr:read_start(function(err, data)
     assert(not err, err)
-    if data then table.insert(err_chunks, data) end
+    if data then
+      table.insert(err_chunks, data)
+    end
   end)
 end
 

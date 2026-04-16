@@ -10,21 +10,16 @@ local spawn = require("aws.spawn")
 ---@param call_opts   AwsCallOpts|nil
 function M.run(group_name, on_success, call_opts)
   vim.notify("aws.nvim: deleting log group " .. group_name .. "...", vim.log.levels.INFO)
-  spawn.run(
-    { "logs", "delete-log-group", "--log-group-name", group_name },
-    function(ok, lines)
-      if not ok then
-        vim.notify(
-          "aws.nvim: delete-log-group failed:\n" .. table.concat(lines, "\n"),
-          vim.log.levels.ERROR
-        )
-        return
-      end
-      vim.notify("aws.nvim: deleted log group " .. group_name, vim.log.levels.INFO)
-      if on_success then on_success() end
-    end,
-    call_opts
-  )
+  spawn.run({ "logs", "delete-log-group", "--log-group-name", group_name }, function(ok, lines)
+    if not ok then
+      vim.notify("aws.nvim: delete-log-group failed:\n" .. table.concat(lines, "\n"), vim.log.levels.ERROR)
+      return
+    end
+    vim.notify("aws.nvim: deleted log group " .. group_name, vim.log.levels.INFO)
+    if on_success then
+      on_success()
+    end
+  end, call_opts)
 end
 
 --- Ask the user to confirm, then dispatch an async delete-log-group call.
@@ -37,7 +32,9 @@ function M.confirm(group_name, on_success, call_opts)
     { "Yes, delete " .. group_name, "Cancel" },
     { prompt = "Delete CloudWatch log group?" },
     function(_, idx)
-      if not idx or idx ~= 1 then return end
+      if not idx or idx ~= 1 then
+        return
+      end
       M.run(group_name, on_success, call_opts)
     end
   )

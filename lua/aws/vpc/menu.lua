@@ -5,37 +5,44 @@ local M = {}
 
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local FILETYPE = "aws-vpc"
 
-local _bufs = {}  -- vpc_id -> bufnr
+local _bufs = {} -- luacheck: ignore 241
 
 local function buf_name(vpc_id)
   return "aws://vpc/menu/" .. vpc_id
 end
 
 local ENTRIES = {
-  { key = "detail",       label = "General / Tags",      desc = "VPC metadata, CIDR blocks, tenancy, tags" },
-  { key = "subnets",      label = "Subnets",             desc = "Subnets — AZ, CIDR, available IPs, public IP mapping" },
-  { key = "igws",         label = "Internet Gateways",   desc = "Internet gateways attached to this VPC" },
-  { key = "nat_gws",      label = "NAT Gateways",        desc = "NAT gateways — state, subnet, public/private IP" },
-  { key = "route_tables", label = "Route Tables",        desc = "Route tables — associations, routes and targets" },
-  { key = "sgs",          label = "Security Groups",     desc = "Security groups — inbound and outbound rules" },
+  { key = "detail", label = "General / Tags", desc = "VPC metadata, CIDR blocks, tenancy, tags" },
+  {
+    key = "subnets",
+    label = "Subnets",
+    desc = "Subnets — AZ, CIDR, available IPs, public IP mapping",
+  },
+  { key = "igws", label = "Internet Gateways", desc = "Internet gateways attached to this VPC" },
+  { key = "nat_gws", label = "NAT Gateways", desc = "NAT gateways — state, subnet, public/private IP" },
+  { key = "route_tables", label = "Route Tables", desc = "Route tables — associations, routes and targets" },
+  { key = "sgs", label = "Security Groups", desc = "Security groups — inbound and outbound rules" },
 }
 
 local function render(buf, vpc_id, vpc_name, call_opts)
-  local region  = config.resolve_region(call_opts)
+  local region = config.resolve_region(call_opts)
   local profile = config.resolve_profile(call_opts)
 
-  local title = "VPC:  " .. (vpc_name and (vpc_name .. "  (" .. vpc_id .. ")") or vpc_id)
-    .. "   [region: " .. region .. "]"
+  local title = "VPC:  "
+    .. (vpc_name and (vpc_name .. "  (" .. vpc_id .. ")") or vpc_id)
+    .. "   [region: "
+    .. region
+    .. "]"
     .. (profile and ("   [profile: " .. profile .. "]") or "")
 
-  local km   = config.values.keymaps.vpc
+  local km = config.values.keymaps.vpc
   local hint = (km.open_detail or "<CR>") .. " open"
 
-  local sep   = string.rep("-", 72)
+  local sep = string.rep("-", 72)
   local lines = { "", title, "", sep, hint, sep, "" }
 
   for i, e in ipairs(ENTRIES) do

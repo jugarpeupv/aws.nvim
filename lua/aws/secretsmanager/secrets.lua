@@ -1,10 +1,10 @@
 --- aws.nvim – Secrets Manager secrets list, filter, and render
 local M = {}
 
-local spawn   = require("aws.spawn")
+local spawn = require("aws.spawn")
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local FILETYPE = "aws-secretsmanager"
 
@@ -19,7 +19,7 @@ local FILETYPE = "aws-secretsmanager"
 ---@field profile   string|nil
 
 --- state keyed by identity string (e.g. "us-east-1" or "prod@eu-west-1")
-local _state = {}  -- identity -> SmSecretState
+local _state = {} -- identity -> SmSecretState
 
 local function buf_name(identity)
   return "aws://secretsmanager/secrets/" .. identity
@@ -34,7 +34,9 @@ end
 ---@return string
 local function pad_right(s, width)
   local display_len = vim.fn.strdisplaywidth(s)
-  if display_len >= width then return s end
+  if display_len >= width then
+    return s
+  end
   return s .. string.rep(" ", width - display_len)
 end
 
@@ -43,17 +45,21 @@ end
 ---@param max integer
 ---@return string
 local function truncate(s, max)
-  if vim.fn.strdisplaywidth(s) <= max then return s end
+  if vim.fn.strdisplaywidth(s) <= max then
+    return s
+  end
   -- Walk codepoints via vim.fn until we fit within max-1 display cols.
   local result = ""
-  local cols   = 0
+  local cols = 0
   local nchars = vim.fn.strchars(s)
   for i = 0, nchars - 1 do
     local ch = vim.fn.strcharpart(s, i, 1)
-    local w  = vim.fn.strdisplaywidth(ch)
-    if cols + w > max - 1 then break end
+    local w = vim.fn.strdisplaywidth(ch)
+    if cols + w > max - 1 then
+      break
+    end
     result = result .. ch
-    cols   = cols + w
+    cols = cols + w
   end
   return result .. "…"
 end
@@ -64,7 +70,9 @@ end
 ---@param value number|string|nil
 ---@return string
 local function fmt_date(value)
-  if not value then return "—" end
+  if not value then
+    return "—"
+  end
   local t = type(value)
   if t == "number" then
     return os.date("%Y-%m-%d", math.floor(value))
@@ -78,11 +86,21 @@ end
 local function hint_line()
   local km = config.values.keymaps.secretsmanager
   local hints = {}
-  if km.open_detail  then table.insert(hints, km.open_detail  .. " detail")   end
-  if km.delete       then table.insert(hints, km.delete       .. " delete")   end
-  if km.filter       then table.insert(hints, km.filter       .. " filter")   end
-  if km.clear_filter then table.insert(hints, km.clear_filter .. " clear")    end
-  if km.refresh      then table.insert(hints, km.refresh      .. " refresh")  end
+  if km.open_detail then
+    table.insert(hints, km.open_detail .. " detail")
+  end
+  if km.delete then
+    table.insert(hints, km.delete .. " delete")
+  end
+  if km.filter then
+    table.insert(hints, km.filter .. " filter")
+  end
+  if km.clear_filter then
+    table.insert(hints, km.clear_filter .. " clear")
+  end
+  if km.refresh then
+    table.insert(hints, km.refresh .. " refresh")
+  end
   return table.concat(hints, "  |  ")
 end
 
@@ -92,15 +110,15 @@ end
 ---@return string[]
 local function make_header(name_width, desc_width, changed_width)
   local total = name_width + desc_width + changed_width + 16
-  local sep   = string.rep("-", total)
+  local sep = string.rep("-", total)
   return {
     sep,
     hint_line(),
     sep,
-    pad_right("Name", name_width) .. "  "
-      .. pad_right("Description", desc_width) .. "  "
-      .. pad_right("Last Changed", changed_width) .. "  "
-      .. "Last Rotated",
+    pad_right("Name", name_width) .. "  " .. pad_right("Description", desc_width) .. "  " .. pad_right(
+      "Last Changed",
+      changed_width
+    ) .. "  " .. "Last Rotated",
     string.rep("-", total),
   }
 end
@@ -108,10 +126,10 @@ end
 ---@param buf integer
 ---@param st  SmSecretState
 local function render(buf, st)
-  local DESC_MAX    = 40
-  local name_width  = 4   -- len("Name")
-  local desc_width  = 11  -- len("Description")
-  local changed_width = 12  -- len("Last Changed")
+  local DESC_MAX = 40
+  local name_width = 4 -- len("Name")
+  local desc_width = 11 -- len("Description")
+  local changed_width = 12 -- len("Last Changed")
 
   for _, s in ipairs(st.secrets) do
     local name = s.Name or ""
@@ -119,16 +137,22 @@ local function render(buf, st)
     if st.filter == "" or name:lower():find(st.filter:lower(), 1, true) then
       local nw = vim.fn.strdisplaywidth(name)
       local dw = vim.fn.strdisplaywidth(desc)
-      if nw > name_width  then name_width  = nw  end
-      if dw > desc_width  then desc_width  = dw  end
+      if nw > name_width then
+        name_width = nw
+      end
+      if dw > desc_width then
+        desc_width = dw
+      end
     end
   end
-  name_width    = name_width    + 2
-  desc_width    = desc_width    + 2
+  name_width = name_width + 2
+  desc_width = desc_width + 2
   changed_width = changed_width + 2
 
   local title = "Secrets Manager"
-    .. "   [region: " .. st.region .. "]"
+    .. "   [region: "
+    .. st.region
+    .. "]"
     .. (st.profile and ("   [profile: " .. st.profile .. "]") or "")
     .. (st.fetching and "  [loading…]" or "")
     .. (st.filter ~= "" and ("   [filter: " .. st.filter .. "]") or "")
@@ -142,16 +166,20 @@ local function render(buf, st)
   st.line_map = {}
 
   for _, s in ipairs(st.secrets) do
-    local name    = s.Name or ""
-    local desc    = truncate(s.Description or "—", DESC_MAX)
+    local name = s.Name or ""
+    local desc = truncate(s.Description or "—", DESC_MAX)
     local changed = fmt_date(s.LastChangedDate)
     local rotated = fmt_date(s.LastRotatedDate)
     if st.filter == "" or name:lower():find(st.filter:lower(), 1, true) then
-      table.insert(lines,
-        pad_right(name,    name_width)    .. "  "
-        .. pad_right(desc,    desc_width)    .. "  "
-        .. pad_right(changed, changed_width) .. "  "
-        .. rotated
+      table.insert(
+        lines,
+        pad_right(name, name_width)
+          .. "  "
+          .. pad_right(desc, desc_width)
+          .. "  "
+          .. pad_right(changed, changed_width)
+          .. "  "
+          .. rotated
       )
       st.line_map[#lines] = name
     end
@@ -170,7 +198,7 @@ end
 local function fetch(buf, st, call_opts)
   buf_mod.set_loading(buf)
   local all = {}
-  st.fetching  = true
+  st.fetching = true
   st.fetch_gen = st.fetch_gen + 1
   local my_gen = st.fetch_gen
 
@@ -181,7 +209,9 @@ local function fetch(buf, st, call_opts)
     end
 
     spawn.run(args, function(ok, lines)
-      if my_gen ~= st.fetch_gen then return end
+      if my_gen ~= st.fetch_gen then
+        return
+      end
 
       if not ok then
         st.fetching = false
@@ -200,9 +230,9 @@ local function fetch(buf, st, call_opts)
       local list = type(data.SecretList) == "table" and data.SecretList or {}
       for _, s in ipairs(list) do
         table.insert(all, {
-          Name            = s.Name,
-          ARN             = s.ARN,
-          Description     = s.Description,
+          Name = s.Name,
+          ARN = s.ARN,
+          Description = s.Description,
           LastChangedDate = s.LastChangedDate,
           LastRotatedDate = s.LastRotatedDate,
           LastAccessedDate = s.LastAccessedDate,
@@ -211,7 +241,7 @@ local function fetch(buf, st, call_opts)
 
       local has_more = type(data.NextToken) == "string"
       st.fetching = has_more
-      st.secrets  = all
+      st.secrets = all
       render(buf, st)
 
       if has_more then
@@ -244,7 +274,7 @@ end
 ---@return string[]
 local function names_in_range(st, r1, r2)
   local names = {}
-  local seen  = {}
+  local seen = {}
   for row = r1, r2 do
     local n = st.line_map[row]
     if n and not seen[n] then
@@ -269,7 +299,9 @@ local function remove_from_state(st, names, buf)
     return out
   end
   st.secrets = filter_list(st.secrets)
-  if st.cache then st.cache = filter_list(st.cache) end
+  if st.cache then
+    st.cache = filter_list(st.cache)
+  end
   render(buf, st)
 end
 
@@ -285,14 +317,14 @@ function M.open(call_opts)
 
   if not _state[identity] then
     _state[identity] = {
-      secrets   = {},
-      filter    = "",
-      line_map  = {},
-      cache     = nil,
-      fetching  = false,
+      secrets = {},
+      filter = "",
+      line_map = {},
+      cache = nil,
+      fetching = false,
       fetch_gen = 0,
-      region    = config.resolve_region(call_opts),
-      profile   = config.resolve_profile(call_opts),
+      region = config.resolve_region(call_opts),
+      profile = config.resolve_profile(call_opts),
     }
   end
   local st = _state[identity]
@@ -314,14 +346,15 @@ function M.open(call_opts)
       vim.notify("aws.nvim: no secrets in selection", vim.log.levels.WARN)
       return
     end
-    local label = #names == 1
-      and ("Yes, delete immediately (no recovery window)")
-      or  ("Yes, delete " .. #names .. " secrets immediately (no recovery window)")
+    local label = #names == 1 and "Yes, delete immediately (no recovery window)"
+      or ("Yes, delete " .. #names .. " secrets immediately (no recovery window)")
     vim.ui.select(
       { label, "Cancel" },
       { prompt = "Delete " .. (#names == 1 and ("secret '" .. names[1] .. "'") or (#names .. " secrets")) .. "?" },
       function(_, idx)
-        if not idx or idx ~= 1 then return end
+        if not idx or idx ~= 1 then
+          return
+        end
         local del = require("aws.secretsmanager.delete")
         local removed = {}
         local function next_delete(i)
@@ -350,12 +383,14 @@ function M.open(call_opts)
       require("aws.secretsmanager.detail").open(name, call_opts)
     end,
 
-    delete        = delete_one,
+    delete = delete_one,
     delete_visual = delete_visual,
 
     filter = function()
       vim.ui.input({ prompt = "Filter secrets: ", default = st.filter }, function(input)
-        if input == nil then return end
+        if input == nil then
+          return
+        end
         st.filter = input
         if input == "" then
           if st.cache then

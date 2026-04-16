@@ -1,10 +1,10 @@
 --- aws.nvim – CloudWatch log groups list, filter, and render
 local M = {}
 
-local spawn   = require("aws.spawn")
+local spawn = require("aws.spawn")
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local FILETYPE = "aws-cloudwatch"
 
@@ -19,7 +19,7 @@ local FILETYPE = "aws-cloudwatch"
 ---@field profile   string|nil
 
 --- state keyed by identity string (e.g. "us-east-1" or "prod@eu-west-1")
-local _state = {}  -- identity -> CwGroupsState
+local _state = {} -- identity -> CwGroupsState
 
 local function buf_name(identity)
   return "aws://cloudwatch/groups/" .. identity
@@ -35,18 +35,30 @@ end
 ---@return string
 local function pad_right(s, width)
   local len = #s
-  if len >= width then return s end
+  if len >= width then
+    return s
+  end
   return s .. string.rep(" ", width - len)
 end
 
 local function hint_line()
   local km = config.values.keymaps.cloudwatch
   local hints = {}
-  if km.open_streams then table.insert(hints, km.open_streams .. " streams")    end
-  if km.delete       then table.insert(hints, km.delete       .. " delete")     end
-  if km.filter       then table.insert(hints, km.filter       .. " filter")     end
-  if km.clear_filter then table.insert(hints, km.clear_filter .. " clear")      end
-  if km.refresh      then table.insert(hints, km.refresh      .. " refresh")    end
+  if km.open_streams then
+    table.insert(hints, km.open_streams .. " streams")
+  end
+  if km.delete then
+    table.insert(hints, km.delete .. " delete")
+  end
+  if km.filter then
+    table.insert(hints, km.filter .. " filter")
+  end
+  if km.clear_filter then
+    table.insert(hints, km.clear_filter .. " clear")
+  end
+  if km.refresh then
+    table.insert(hints, km.refresh .. " refresh")
+  end
   return table.concat(hints, "  |  ")
 end
 
@@ -83,13 +95,17 @@ local function render(buf, st)
   for _, g in ipairs(st.groups) do
     local name = g.logGroupName or ""
     if st.filter == "" or name:lower():find(st.filter:lower(), 1, true) then
-      if #name > col_width then col_width = #name end
+      if #name > col_width then
+        col_width = #name
+      end
     end
   end
   col_width = col_width + 2
 
   local title = "CloudWatch Log Groups"
-    .. "   [region: " .. st.region .. "]"
+    .. "   [region: "
+    .. st.region
+    .. "]"
     .. (st.profile and ("   [profile: " .. st.profile .. "]") or "")
     .. (st.fetching and "  [loading…]" or "")
     .. (st.filter ~= "" and ("   [server filter: " .. st.filter .. "]") or "")
@@ -103,10 +119,11 @@ local function render(buf, st)
   st.line_map = {}
 
   for _, g in ipairs(st.groups) do
-    local name     = g.logGroupName    or ""
+    local name = g.logGroupName or ""
     local retained = g.retentionInDays and (g.retentionInDays .. "d") or "never"
     if st.filter == "" or name:lower():find(st.filter:lower(), 1, true) then
-      table.insert(lines,
+      table.insert(
+        lines,
         pad_right(name, col_width) .. "  " .. pad_right(retained, 10) .. "  " .. fmt_size(g.storedBytes)
       )
       st.line_map[#lines] = name
@@ -127,14 +144,16 @@ end
 local function fetch(buf, st, call_opts, pattern)
   buf_mod.set_loading(buf)
   local all = {}
-  st.fetching  = true
+  st.fetching = true
   st.fetch_gen = st.fetch_gen + 1
   local my_gen = st.fetch_gen
 
   local function fetch_page(next_token)
     local args = {
-      "logs", "describe-log-groups",
-      "--output", "json",
+      "logs",
+      "describe-log-groups",
+      "--output",
+      "json",
       "--no-paginate",
     }
     if pattern and pattern ~= "" then
@@ -145,7 +164,9 @@ local function fetch(buf, st, call_opts, pattern)
     end
 
     spawn.run(args, function(ok, lines)
-      if my_gen ~= st.fetch_gen then return end
+      if my_gen ~= st.fetch_gen then
+        return
+      end
 
       if not ok then
         st.fetching = false
@@ -163,15 +184,15 @@ local function fetch(buf, st, call_opts, pattern)
 
       for _, g in ipairs(type(data.logGroups) == "table" and data.logGroups or {}) do
         table.insert(all, {
-          logGroupName    = g.logGroupName,
-          storedBytes     = g.storedBytes,
+          logGroupName = g.logGroupName,
+          storedBytes = g.storedBytes,
           retentionInDays = g.retentionInDays,
         })
       end
 
       local has_more = type(data.nextToken) == "string"
       st.fetching = has_more
-      st.groups   = all
+      st.groups = all
       render(buf, st)
 
       if has_more then
@@ -203,7 +224,7 @@ end
 ---@return string[]
 local function groups_in_range(st, r1, r2)
   local names = {}
-  local seen  = {}
+  local seen = {}
   for row = r1, r2 do
     local name = st.line_map[row]
     if name and not seen[name] then
@@ -228,7 +249,9 @@ local function remove_from_state(st, names, buf)
     return out
   end
   st.groups = filter_list(st.groups)
-  if st.cache then st.cache = filter_list(st.cache) end
+  if st.cache then
+    st.cache = filter_list(st.cache)
+  end
   render(buf, st)
 end
 
@@ -245,14 +268,14 @@ function M.open(call_opts, fresh)
 
   if not _state[identity] then
     _state[identity] = {
-      groups    = {},
-      filter    = "",
-      line_map  = {},
-      cache     = nil,
-      fetching  = false,
+      groups = {},
+      filter = "",
+      line_map = {},
+      cache = nil,
+      fetching = false,
       fetch_gen = 0,
-      region    = config.resolve_region(call_opts),
-      profile   = config.resolve_profile(call_opts),
+      region = config.resolve_region(call_opts),
+      profile = config.resolve_profile(call_opts),
     }
   end
   local st = _state[identity]
@@ -274,30 +297,26 @@ function M.open(call_opts, fresh)
       vim.notify("aws.nvim: no log groups in selection", vim.log.levels.WARN)
       return
     end
-    local label = #names == 1
-      and ("Yes, delete " .. names[1])
-      or  ("Yes, delete " .. #names .. " log groups")
-    vim.ui.select(
-      { label, "Cancel" },
-      { prompt = "Delete CloudWatch log groups?" },
-      function(_, idx)
-        if not idx or idx ~= 1 then return end
-        local del = require("aws.cloudwatch.delete")
-        local removed = {}
-        local function next_delete(i)
-          if i > #names then
-            remove_from_state(st, removed, buf)
-            return
-          end
-          local name = names[i]
-          del.run(name, function()
-            removed[name] = true
-            next_delete(i + 1)
-          end, call_opts)
-        end
-        next_delete(1)
+    local label = #names == 1 and ("Yes, delete " .. names[1]) or ("Yes, delete " .. #names .. " log groups")
+    vim.ui.select({ label, "Cancel" }, { prompt = "Delete CloudWatch log groups?" }, function(_, idx)
+      if not idx or idx ~= 1 then
+        return
       end
-    )
+      local del = require("aws.cloudwatch.delete")
+      local removed = {}
+      local function next_delete(i)
+        if i > #names then
+          remove_from_state(st, removed, buf)
+          return
+        end
+        local name = names[i]
+        del.run(name, function()
+          removed[name] = true
+          next_delete(i + 1)
+        end, call_opts)
+      end
+      next_delete(1)
+    end)
   end
 
   keymaps.apply_cloudwatch(buf, {
@@ -310,12 +329,14 @@ function M.open(call_opts, fresh)
       require("aws.cloudwatch.streams").open(name, call_opts)
     end,
 
-    delete        = delete_one,
+    delete = delete_one,
     delete_visual = delete_visual,
 
     filter = function()
       vim.ui.input({ prompt = "Filter log groups: ", default = st.filter }, function(input)
-        if input == nil then return end
+        if input == nil then
+          return
+        end
         if input == "" then
           st.filter = ""
           if st.cache then
@@ -345,7 +366,9 @@ function M.open(call_opts, fresh)
       fetch(buf, st, call_opts, st.filter ~= "" and st.filter or nil)
     end,
 
-    close = function() buf_mod.close_split(buf) end,
+    close = function()
+      buf_mod.close_split(buf)
+    end,
   })
 
   if st.cache and not fresh then

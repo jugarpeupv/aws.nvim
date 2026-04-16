@@ -1,10 +1,10 @@
 --- aws.nvim – Secrets Manager secret detail view (vsplit)
 local M = {}
 
-local spawn   = require("aws.spawn")
+local spawn = require("aws.spawn")
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local FILETYPE = "aws-secretsmanager"
 
@@ -23,7 +23,7 @@ end
 ---@field secret_val string|nil      cached SecretString (nil = not yet fetched)
 ---@field secret_err string|nil      error message from get-secret-value, if any
 ---@field secret_bin boolean         true when the secret is binary (not a string)
-local _state = {}  -- name -> SmDetailState
+local _state = {} -- name -> SmDetailState
 
 -------------------------------------------------------------------------------
 -- Helpers
@@ -34,7 +34,9 @@ local _state = {}  -- name -> SmDetailState
 ---@return string
 local function pad_right(s, width)
   local len = #s
-  if len >= width then return s end
+  if len >= width then
+    return s
+  end
   return s .. string.rep(" ", width - len)
 end
 
@@ -44,13 +46,17 @@ end
 ---@param value number|string|nil
 ---@return string
 local function fmt_date(value)
-  if not value then return "—" end
+  if not value then
+    return "—"
+  end
   local t = type(value)
   if t == "number" then
     return os.date("%Y-%m-%d %H:%M:%S UTC", math.floor(value))
   elseif t == "string" then
     local date, time = value:match("^(%d%d%d%d%-%d%d%-%d%d)T(%d%d:%d%d:%d%d)")
-    if date and time then return date .. " " .. time .. " UTC" end
+    if date and time then
+      return date .. " " .. time .. " UTC"
+    end
     return value
   end
   return tostring(value)
@@ -67,7 +73,9 @@ local function format_secret_value(s)
     local out = {}
     -- Sort keys for stable output
     local keys = {}
-    for k in pairs(decoded) do table.insert(keys, k) end
+    for k in pairs(decoded) do
+      table.insert(keys, k)
+    end
     table.sort(keys)
     for _, k in ipairs(keys) do
       local v = decoded[k]
@@ -88,29 +96,36 @@ end
 ---@param name string
 local function render(buf, name)
   local st = _state[name]
-  if not st then return end
+  if not st then
+    return
+  end
 
-  local d       = st.data
-  local region  = st.region
+  local d = st.data
+  local region = st.region
   local profile = st.profile
-  local km      = config.values.keymaps.secretsmanager
+  local km = config.values.keymaps.secretsmanager
 
   local lines = {}
 
   -- Title
   table.insert(lines, "")
-  local title = "Secrets Manager  >>  " .. name
-    .. "   [region: " .. region .. "]"
+  local title = "Secrets Manager  >>  "
+    .. name
+    .. "   [region: "
+    .. region
+    .. "]"
     .. (profile and ("   [profile: " .. profile .. "]") or "")
   table.insert(lines, title)
   table.insert(lines, "")
 
   -- Hint line
   local sep_len = math.max(#title, 72)
-  local sep     = string.rep("-", sep_len)
+  local sep = string.rep("-", sep_len)
   table.insert(lines, sep)
   local hints = {}
-  if km.detail_refresh then table.insert(hints, km.detail_refresh .. " refresh") end
+  if km.detail_refresh then
+    table.insert(hints, km.detail_refresh .. " refresh")
+  end
   if km.reveal then
     local label = st.revealed and "hide secret" or "reveal secret"
     table.insert(hints, km.reveal .. " " .. label)
@@ -127,25 +142,25 @@ local function render(buf, name)
   -- Identifiers
   table.insert(lines, "Identifiers")
   table.insert(lines, string.rep("-", sep_len))
-  row("ARN",  d.ARN)
+  row("ARN", d.ARN)
   row("Name", d.Name)
 
   -- General
   table.insert(lines, "")
   table.insert(lines, "General")
   table.insert(lines, string.rep("-", sep_len))
-  row("Description",   d.Description)
-  row("Created",       fmt_date(d.CreatedDate))
-  row("Last Changed",  fmt_date(d.LastChangedDate))
+  row("Description", d.Description)
+  row("Created", fmt_date(d.CreatedDate))
+  row("Last Changed", fmt_date(d.LastChangedDate))
   row("Last Accessed", fmt_date(d.LastAccessedDate))
-  row("Last Rotated",  fmt_date(d.LastRotatedDate))
+  row("Last Rotated", fmt_date(d.LastRotatedDate))
 
   -- Rotation
   table.insert(lines, "")
   table.insert(lines, "Rotation")
   table.insert(lines, string.rep("-", sep_len))
   local rot_enabled = d.RotationEnabled and "yes" or "no"
-  row("Rotation Enabled",  rot_enabled)
+  row("Rotation Enabled", rot_enabled)
   if d.RotationLambdaARN and d.RotationLambdaARN ~= "" then
     row("Lambda ARN", d.RotationLambdaARN)
   end
@@ -162,7 +177,7 @@ local function render(buf, name)
     table.insert(lines, "Tags")
     table.insert(lines, string.rep("-", sep_len))
     for _, tag in ipairs(d.Tags) do
-      local k = tag.Key   or "?"
+      local k = tag.Key or "?"
       local v = tag.Value or "—"
       row(k, v)
     end
@@ -174,9 +189,7 @@ local function render(buf, name)
     table.insert(lines, "Versions")
     table.insert(lines, string.rep("-", sep_len))
     for ver_id, stages in pairs(d.VersionIdsToStages) do
-      local stage_str = type(stages) == "table"
-        and table.concat(stages, ", ")
-        or  tostring(stages)
+      local stage_str = type(stages) == "table" and table.concat(stages, ", ") or tostring(stages)
       table.insert(lines, "  " .. ver_id)
       table.insert(lines, "    Stages: " .. stage_str)
     end
@@ -212,9 +225,12 @@ local function fetch(name, buf, call_opts)
   buf_mod.set_loading(buf)
 
   spawn.run({
-    "secretsmanager", "describe-secret",
-    "--secret-id", name,
-    "--output", "json",
+    "secretsmanager",
+    "describe-secret",
+    "--secret-id",
+    name,
+    "--output",
+    "json",
   }, function(ok, lines)
     if not ok then
       buf_mod.set_error(buf, lines)
@@ -231,10 +247,10 @@ local function fetch(name, buf, call_opts)
     -- Preserve reveal state across refreshes; reset secret cache on refresh.
     local prev = _state[name]
     _state[name] = {
-      data       = data,
-      region     = config.resolve_region(call_opts),
-      profile    = config.resolve_profile(call_opts),
-      revealed   = prev and prev.revealed   or false,
+      data = data,
+      region = config.resolve_region(call_opts),
+      profile = config.resolve_profile(call_opts),
+      revealed = prev and prev.revealed or false,
       secret_val = prev and prev.secret_val or nil,
       secret_err = prev and prev.secret_err or nil,
       secret_bin = prev and prev.secret_bin or false,
@@ -250,7 +266,9 @@ end
 ---@param call_opts AwsCallOpts|nil
 local function fetch_secret_value(name, buf, call_opts)
   local st = _state[name]
-  if not st then return end
+  if not st then
+    return
+  end
 
   -- Already cached — just re-render.
   if st.secret_val or st.secret_err or st.secret_bin then
@@ -262,12 +280,17 @@ local function fetch_secret_value(name, buf, call_opts)
   render(buf, name)
 
   spawn.run({
-    "secretsmanager", "get-secret-value",
-    "--secret-id", name,
-    "--output", "json",
+    "secretsmanager",
+    "get-secret-value",
+    "--secret-id",
+    name,
+    "--output",
+    "json",
   }, function(ok, lines)
     local s = _state[name]
-    if not s then return end
+    if not s then
+      return
+    end
 
     if not ok then
       s.secret_err = table.concat(lines, " ")
@@ -319,7 +342,9 @@ function M.open(name, call_opts)
 
     reveal = function()
       local st = _state[name]
-      if not st then return end
+      if not st then
+        return
+      end
       st.revealed = not st.revealed
       if st.revealed then
         fetch_secret_value(name, buf, call_opts)

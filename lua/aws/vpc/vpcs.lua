@@ -3,10 +3,10 @@
 --- Pagination: nextToken pattern (ec2 describe-vpcs).
 local M = {}
 
-local spawn   = require("aws.spawn")
+local spawn = require("aws.spawn")
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local FILETYPE = "aws-vpc"
 
@@ -20,24 +20,25 @@ end
 local function tag_name(tags, fallback)
   if type(tags) == "table" then
     for _, t in ipairs(tags) do
-      if t.Key == "Name" then return t.Value or fallback end
+      if t.Key == "Name" then
+        return t.Value or fallback
+      end
     end
   end
   return fallback
 end
 
 local function render(buf, st)
-  local region  = st.region  or "unknown"
+  local region = st.region or "unknown"
   local profile = st.profile
-  local badge   = "[region:" .. region .. "]"
-    .. (profile and "  [profile:" .. profile .. "]" or "")
+  local badge = "[region:" .. region .. "]" .. (profile and "  [profile:" .. profile .. "]" or "")
 
-  local km     = config.values.keymaps.vpc
-  local hints  = table.concat({
-    (km.open_detail  or "<CR>") .. " detail",
-    (km.filter       or "F")   .. " filter",
-    (km.clear_filter or "C")   .. " clear",
-    (km.refresh      or "R")   .. " refresh",
+  local km = config.values.keymaps.vpc
+  local hints = table.concat({
+    (km.open_detail or "<CR>") .. " detail",
+    (km.filter or "F") .. " filter",
+    (km.clear_filter or "C") .. " clear",
+    (km.refresh or "R") .. " refresh",
   }, "   ")
   local sep = string.rep("-", 72)
 
@@ -47,7 +48,8 @@ local function render(buf, st)
   if st.filter and st.filter ~= "" then
     local pat = st.filter:lower()
     for _, v in ipairs(items) do
-      if v.name:lower():find(pat, 1, true)
+      if
+        v.name:lower():find(pat, 1, true)
         or v.vpc_id:lower():find(pat, 1, true)
         or v.cidr:lower():find(pat, 1, true)
       then
@@ -59,17 +61,17 @@ local function render(buf, st)
   end
 
   -- column widths
-  local w_name  = 8
-  local w_id    = 8
-  local w_cidr  = 9
+  local w_name = 8
+  local w_id = 8
+  local w_cidr = 9
   for _, v in ipairs(visible) do
-    w_name = math.max(w_name, tonumber(vim.fn.strdisplaywidth(v.name))   or 0)
-    w_id   = math.max(w_id,   tonumber(vim.fn.strdisplaywidth(v.vpc_id)) or 0)
-    w_cidr = math.max(w_cidr, tonumber(vim.fn.strdisplaywidth(v.cidr))   or 0)
+    w_name = math.max(w_name, tonumber(vim.fn.strdisplaywidth(v.name)) or 0)
+    w_id = math.max(w_id, tonumber(vim.fn.strdisplaywidth(v.vpc_id)) or 0)
+    w_cidr = math.max(w_cidr, tonumber(vim.fn.strdisplaywidth(v.cidr)) or 0)
   end
   -- LuaJIT string.format rejects widths > 99
   w_name = math.min(w_name, 60)
-  w_id   = math.min(w_id,   30)
+  w_id = math.min(w_id, 30)
   w_cidr = math.min(w_cidr, 20)
 
   local fmt = string.format("%%-%ds  %%-%ds  %%-%ds  %%-9s  %%s", w_name, w_id, w_cidr)
@@ -104,7 +106,7 @@ end
 
 local function fetch(buf, st, call_opts)
   buf_mod.set_loading(buf)
-  st.items    = {}
+  st.items = {}
   st.fetching = true
   st.fetch_gen = (st.fetch_gen or 0) + 1
   local my_gen = st.fetch_gen
@@ -116,7 +118,9 @@ local function fetch(buf, st, call_opts)
     end
 
     spawn.run(args, function(ok, lines_out)
-      if my_gen ~= st.fetch_gen then return end
+      if my_gen ~= st.fetch_gen then
+        return
+      end
       if not ok then
         buf_mod.set_error(buf, lines_out)
         st.fetching = false
@@ -135,25 +139,31 @@ local function fetch(buf, st, call_opts)
         local cidrs = {}
         if type(v.CidrBlockAssociationSet) == "table" then
           for _, assoc in ipairs(v.CidrBlockAssociationSet) do
-            if assoc.CidrBlock then table.insert(cidrs, assoc.CidrBlock) end
+            if assoc.CidrBlock then
+              table.insert(cidrs, assoc.CidrBlock)
+            end
           end
         end
-        if #cidrs == 0 and v.CidrBlock then cidrs = { v.CidrBlock } end
+        if #cidrs == 0 and v.CidrBlock then
+          cidrs = { v.CidrBlock }
+        end
 
         table.insert(st.items, {
-          vpc_id     = v.VpcId or "?",
-          name       = tag_name(v.Tags, v.VpcId or "—"),
-          cidr       = cidrs[1] or "—",
+          vpc_id = v.VpcId or "?",
+          name = tag_name(v.Tags, v.VpcId or "—"),
+          cidr = cidrs[1] or "—",
           extra_cidrs = (function()
             local extra = {}
-            for i = 2, #cidrs do table.insert(extra, cidrs[i]) end
+            for i = 2, #cidrs do
+              table.insert(extra, cidrs[i])
+            end
             return extra
           end)(),
-          state      = v.State or "?",
+          state = v.State or "?",
           is_default = v.IsDefault or false,
-          tenancy    = v.InstanceTenancy or "?",
-          owner_id   = v.OwnerId or "?",
-          tags       = v.Tags or {},
+          tenancy = v.InstanceTenancy or "?",
+          owner_id = v.OwnerId or "?",
+          tags = v.Tags or {},
         })
       end
 
@@ -164,7 +174,7 @@ local function fetch(buf, st, call_opts)
       if token then
         list_page(token)
       else
-        st.cache    = st.items
+        st.cache = st.items
         st.fetching = false
       end
     end, call_opts)
@@ -181,22 +191,22 @@ function M.open(call_opts)
 
   if not _state[identity] then
     _state[identity] = {
-      items     = {},
-      filter    = "",
-      line_map  = {},
-      cache     = nil,
-      fetching  = false,
+      items = {},
+      filter = "",
+      line_map = {},
+      cache = nil,
+      fetching = false,
       fetch_gen = 0,
-      region    = config.resolve_region(call_opts),
-      profile   = config.resolve_profile(call_opts),
+      region = config.resolve_region(call_opts),
+      profile = config.resolve_profile(call_opts),
     }
   end
   local st = _state[identity]
 
   keymaps.apply_vpc(buf, {
     open_detail = function()
-      local row  = vim.api.nvim_win_get_cursor(0)[1]
-      local id   = st.line_map[row]
+      local row = vim.api.nvim_win_get_cursor(0)[1]
+      local id = st.line_map[row]
       if id then
         -- find the vpc_name from items for the menu title
         local vpc_name
@@ -211,7 +221,9 @@ function M.open(call_opts)
     end,
     filter = function()
       vim.ui.input({ prompt = "Filter VPCs: ", default = st.filter }, function(input)
-        if input == nil then return end
+        if input == nil then
+          return
+        end
         st.filter = input
         render(buf, st)
       end)

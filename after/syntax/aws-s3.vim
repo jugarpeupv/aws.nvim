@@ -1,9 +1,6 @@
 " aws.nvim – syntax highlighting for the aws-s3 filetype
 syntax clear
 
-" Stop regex matching past column 120 to avoid lag when holding j/k
-setlocal synmaxcol=120
-
 " ── Separators ───────────────────────────────────────────────────────────────
 syntax match AwsS3Sep       /^-\+$/
 
@@ -23,7 +20,7 @@ syntax match AwsS3ColHeader /^Name\s\+Created$/
 syntax match AwsS3Bucket    /^[a-z0-9][a-z0-9._-]\{4,}/
 
 " ── ISO date column ──────────────────────────────────────────────────────────
-syntax match AwsS3Date      /\d\{4}-\d\{2}-\d\{2} \d\{2}:\d\{2}:\d\{2}/
+syntax match AwsS3Date      /\d\{4}-\d\{2}-\d\{2} \d\{2}:\d\{2}:\d\{2}[+-]\d\{2}:\d\{2}/
 
 " ── Highlight links ──────────────────────────────────────────────────────────
 highlight default link AwsS3Sep       Comment

@@ -5,38 +5,43 @@ local M = {}
 
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local FILETYPE = "aws-iam"
 
 --- State keyed by identity (menu is stateless beyond the buffer itself)
-local _bufs = {}  -- identity -> bufnr
+local _bufs = {} -- luacheck: ignore 241
 
 local function buf_name(identity)
   return "aws://iam/menu/" .. identity
 end
 
 local ENTRIES = {
-  { key = "users",     label = "Users",               desc = "IAM users — details, groups, policies, access keys, MFA" },
-  { key = "groups",    label = "Groups",              desc = "IAM groups — members, attached & inline policies" },
-  { key = "roles",     label = "Roles",               desc = "IAM roles — trust policy, attached & inline policies" },
-  { key = "policies",  label = "Policies",            desc = "Customer-managed policies — versions, attached entities" },
-  { key = "providers", label = "Identity Providers",  desc = "OIDC and SAML identity providers" },
+  {
+    key = "users",
+    label = "Users",
+    desc = "IAM users — details, groups, policies, access keys, MFA",
+  },
+  { key = "groups", label = "Groups", desc = "IAM groups — members, attached & inline policies" },
+  { key = "roles", label = "Roles", desc = "IAM roles — trust policy, attached & inline policies" },
+  {
+    key = "policies",
+    label = "Policies",
+    desc = "Customer-managed policies — versions, attached entities",
+  },
+  { key = "providers", label = "Identity Providers", desc = "OIDC and SAML identity providers" },
 }
 
 local function render(buf, identity, call_opts)
-  local region  = config.resolve_region(call_opts)
+  local region = config.resolve_region(call_opts)
   local profile = config.resolve_profile(call_opts)
 
-  local title = "IAM"
-    .. "   [region: " .. region .. "]"
-    .. (profile and ("   [profile: " .. profile .. "]") or "")
+  local title = "IAM" .. "   [region: " .. region .. "]" .. (profile and ("   [profile: " .. profile .. "]") or "")
 
-  local km   = config.values.keymaps.iam
-  local hint = (km.open_list or "<CR>") .. " open"
-    .. "  |  " .. (km.refresh or "R") .. " refresh"
+  local km = config.values.keymaps.iam
+  local hint = (km.open_list or "<CR>") .. " open" .. "  |  " .. (km.refresh or "R") .. " refresh"
 
-  local sep  = string.rep("-", 72)
+  local sep = string.rep("-", 72)
   local lines = { "", title, "", sep, hint, sep, "" }
 
   for i, e in ipairs(ENTRIES) do

@@ -10,21 +10,16 @@ local spawn = require("aws.spawn")
 ---@param call_opts   AwsCallOpts|nil
 function M.run(stack_name, on_success, call_opts)
   vim.notify("aws.nvim: dispatching delete for " .. stack_name .. "...", vim.log.levels.INFO)
-  spawn.run(
-    { "cloudformation", "delete-stack", "--stack-name", stack_name },
-    function(ok, lines)
-      if not ok then
-        vim.notify(
-          "aws.nvim: delete-stack failed:\n" .. table.concat(lines, "\n"),
-          vim.log.levels.ERROR
-        )
-        return
-      end
-      vim.notify("aws.nvim: delete dispatched for " .. stack_name, vim.log.levels.INFO)
-      if on_success then on_success() end
-    end,
-    call_opts
-  )
+  spawn.run({ "cloudformation", "delete-stack", "--stack-name", stack_name }, function(ok, lines)
+    if not ok then
+      vim.notify("aws.nvim: delete-stack failed:\n" .. table.concat(lines, "\n"), vim.log.levels.ERROR)
+      return
+    end
+    vim.notify("aws.nvim: delete dispatched for " .. stack_name, vim.log.levels.INFO)
+    if on_success then
+      on_success()
+    end
+  end, call_opts)
 end
 
 --- Ask the user to confirm, then dispatch an async delete-stack call.
@@ -37,7 +32,9 @@ function M.confirm(stack_name, on_success, call_opts)
     { "Yes, delete " .. stack_name, "Cancel" },
     { prompt = "Delete CloudFormation stack?" },
     function(_, idx)
-      if not idx or idx ~= 1 then return end
+      if not idx or idx ~= 1 then
+        return
+      end
       M.run(stack_name, on_success, call_opts)
     end
   )

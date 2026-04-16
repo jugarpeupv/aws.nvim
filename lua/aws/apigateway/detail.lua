@@ -2,10 +2,10 @@
 --- Fires three parallel AWS CLI calls: get-stages, get-resources, get-authorizers.
 local M = {}
 
-local spawn   = require("aws.spawn")
+local spawn = require("aws.spawn")
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local FILETYPE = "aws-apigateway"
 
@@ -21,7 +21,7 @@ end
 ---@field authorizers table[]|nil     result of get-authorizers .items[]
 ---@field region      string
 ---@field profile     string|nil
-local _state = {}  -- id -> AgwDetailState
+local _state = {} -- id -> AgwDetailState
 
 -------------------------------------------------------------------------------
 -- Helpers
@@ -32,7 +32,9 @@ local _state = {}  -- id -> AgwDetailState
 ---@return string
 local function pad_right(s, width)
   local display_len = vim.fn.strdisplaywidth(s)
-  if display_len >= width then return s end
+  if display_len >= width then
+    return s
+  end
   return s .. string.rep(" ", width - display_len)
 end
 
@@ -41,16 +43,20 @@ end
 ---@param max integer
 ---@return string
 local function truncate(s, max)
-  if vim.fn.strdisplaywidth(s) <= max then return s end
+  if vim.fn.strdisplaywidth(s) <= max then
+    return s
+  end
   local result = ""
-  local cols   = 0
+  local cols = 0
   local nchars = vim.fn.strchars(s)
   for i = 0, nchars - 1 do
     local ch = vim.fn.strcharpart(s, i, 1)
-    local w  = vim.fn.strdisplaywidth(ch)
-    if cols + w > max - 1 then break end
+    local w = vim.fn.strdisplaywidth(ch)
+    if cols + w > max - 1 then
+      break
+    end
     result = result .. ch
-    cols   = cols + w
+    cols = cols + w
   end
   return result .. "…"
 end
@@ -59,13 +65,17 @@ end
 ---@param value number|string|nil
 ---@return string
 local function fmt_date(value)
-  if not value then return "—" end
+  if not value then
+    return "—"
+  end
   if type(value) == "number" then
     return os.date("%Y-%m-%d %H:%M:%S UTC", math.floor(value))
   elseif type(value) == "string" then
     -- ISO-8601 fallback just in case
     local date, time = value:match("^(%d%d%d%d%-%d%d%-%d%d)T(%d%d:%d%d:%d%d)")
-    if date and time then return date .. " " .. time .. " UTC" end
+    if date and time then
+      return date .. " " .. time .. " UTC"
+    end
     return value
   end
   return tostring(value)
@@ -75,12 +85,14 @@ end
 ---@param id   string
 local function render(buf, id)
   local st = _state[id]
-  if not st then return end
+  if not st then
+    return
+  end
 
-  local api      = st.api
-  local region   = st.region
-  local profile  = st.profile
-  local km       = config.values.keymaps.apigateway
+  local api = st.api
+  local region = st.region
+  local profile = st.profile
+  local km = config.values.keymaps.apigateway
 
   local lines = {}
   local LABEL = 28
@@ -91,19 +103,25 @@ local function render(buf, id)
 
   -- ── Title ──────────────────────────────────────────────────────────────────
   table.insert(lines, "")
-  local title = "API Gateway  >>  " .. (api.id or id)
-    .. "  /  " .. (api.name or "")
-    .. "   [region: " .. region .. "]"
+  local title = "API Gateway  >>  "
+    .. (api.id or id)
+    .. "  /  "
+    .. (api.name or "")
+    .. "   [region: "
+    .. region
+    .. "]"
     .. (profile and ("   [profile: " .. profile .. "]") or "")
   table.insert(lines, title)
   table.insert(lines, "")
 
   -- ── Hint line ──────────────────────────────────────────────────────────────
   local sep_len = math.max(vim.fn.strdisplaywidth(title), 72)
-  local sep     = string.rep("-", sep_len)
+  local sep = string.rep("-", sep_len)
   table.insert(lines, sep)
   local hints = {}
-  if km.detail_refresh then table.insert(hints, km.detail_refresh .. " refresh") end
+  if km.detail_refresh then
+    table.insert(hints, km.detail_refresh .. " refresh")
+  end
   if #hints > 0 then
     table.insert(lines, table.concat(hints, "  |  "))
     table.insert(lines, sep)
@@ -112,14 +130,14 @@ local function render(buf, id)
   -- ── General ────────────────────────────────────────────────────────────────
   table.insert(lines, "General")
   table.insert(lines, sep)
-  row("ID",              api.id)
-  row("Name",            api.name)
-  row("Description",     (api.description and api.description ~= "") and api.description or "—")
-  row("Created",         fmt_date(api.createdDate))
-  row("API Key Source",  api.apiKeySource)
+  row("ID", api.id)
+  row("Name", api.name)
+  row("Description", (api.description and api.description ~= "") and api.description or "—")
+  row("Created", fmt_date(api.createdDate))
+  row("API Key Source", api.apiKeySource)
 
   -- Endpoint types
-  local ec    = type(api.endpointConfiguration) == "table" and api.endpointConfiguration or {}
+  local ec = type(api.endpointConfiguration) == "table" and api.endpointConfiguration or {}
   local types = type(ec.types) == "table" and ec.types or {}
   row("Endpoint Type(s)", #types > 0 and table.concat(types, ", ") or "—")
 
@@ -141,17 +159,19 @@ local function render(buf, id)
       table.insert(lines, "  (none)")
     else
       for i, stage in ipairs(st.stages) do
-        if i > 1 then table.insert(lines, "") end
-        row("  Stage Name",       stage.stageName)
-        row("  Description",      (stage.description and stage.description ~= "") and stage.description or "—")
-        row("  Deployment ID",    stage.deploymentId)
-        row("  Created",          fmt_date(stage.createdDate))
-        row("  Last Updated",     fmt_date(stage.lastUpdatedDate))
-        row("  Cache Enabled",    stage.cacheClusterEnabled ~= nil and tostring(stage.cacheClusterEnabled) or "—")
-        if stage.cacheClusterEnabled then
-          row("  Cache Size",     stage.cacheClusterSize and tostring(stage.cacheClusterSize) or "—")
+        if i > 1 then
+          table.insert(lines, "")
         end
-        row("  Tracing",          stage.tracingEnabled ~= nil and tostring(stage.tracingEnabled) or "—")
+        row("  Stage Name", stage.stageName)
+        row("  Description", (stage.description and stage.description ~= "") and stage.description or "—")
+        row("  Deployment ID", stage.deploymentId)
+        row("  Created", fmt_date(stage.createdDate))
+        row("  Last Updated", fmt_date(stage.lastUpdatedDate))
+        row("  Cache Enabled", stage.cacheClusterEnabled ~= nil and tostring(stage.cacheClusterEnabled) or "—")
+        if stage.cacheClusterEnabled then
+          row("  Cache Size", stage.cacheClusterSize and tostring(stage.cacheClusterSize) or "—")
+        end
+        row("  Tracing", stage.tracingEnabled ~= nil and tostring(stage.tracingEnabled) or "—")
         -- Stage variables
         local vars = type(stage.variables) == "table" and stage.variables or {}
         local var_parts = {}
@@ -200,13 +220,16 @@ local function render(buf, id)
         for _, method_name in ipairs(method_names) do
           local method = methods[method_name]
           if type(method) == "table" then
-            local integration = type(method.methodIntegration) == "table"
-              and method.methodIntegration or nil
+            local integration = type(method.methodIntegration) == "table" and method.methodIntegration or nil
             local int_type = integration and (integration.type or "—") or "—"
-            local int_uri  = integration and integration.uri or nil
-            local line = "    " .. method_name
-              .. "  [" .. method.authorizationType .. "]"
-              .. "  integration: " .. int_type
+            local int_uri = integration and integration.uri or nil
+            local line = "    "
+              .. method_name
+              .. "  ["
+              .. method.authorizationType
+              .. "]"
+              .. "  integration: "
+              .. int_type
             if int_uri then
               line = line .. "  " .. truncate(int_uri, 60)
             end
@@ -231,12 +254,16 @@ local function render(buf, id)
       table.insert(lines, "  (none)")
     else
       for i, auth in ipairs(st.authorizers) do
-        if i > 1 then table.insert(lines, "") end
-        row("  Name",            auth.name)
-        row("  Type",            auth.type)
+        if i > 1 then
+          table.insert(lines, "")
+        end
+        row("  Name", auth.name)
+        row("  Type", auth.type)
         row("  Identity Source", auth.identitySource)
-        row("  TTL (s)",         auth.authorizerResultTtlInSeconds ~= nil
-                                   and tostring(auth.authorizerResultTtlInSeconds) or "—")
+        row(
+          "  TTL (s)",
+          auth.authorizerResultTtlInSeconds ~= nil and tostring(auth.authorizerResultTtlInSeconds) or "—"
+        )
         if auth.authorizerUri then
           row("  URI", truncate(auth.authorizerUri, 60))
         end
@@ -266,34 +293,39 @@ local function fetch(id, buf, call_opts)
 
   -- Partial state for this fetch round; pending tracks how many sub-calls remain.
   local partial = {
-    api         = nil,
-    stages      = nil,
-    resources   = nil,
+    api = nil,
+    stages = nil,
+    resources = nil,
     authorizers = nil,
   }
-  local pending = 4  -- api + stages + resources + authorizers
+  local pending = 4 -- api + stages + resources + authorizers
 
   local function on_done()
     pending = pending - 1
-    if pending > 0 then return end
+    if pending > 0 then
+      return
+    end
     -- All done – merge into _state and render.
     local existing = _state[id] or {}
     _state[id] = {
-      api         = partial.api         or existing.api or {},
-      stages      = partial.stages      or existing.stages or {},
-      resources   = partial.resources   or existing.resources or {},
+      api = partial.api or existing.api or {},
+      stages = partial.stages or existing.stages or {},
+      resources = partial.resources or existing.resources or {},
       authorizers = partial.authorizers or existing.authorizers or {},
-      region      = config.resolve_region(call_opts),
-      profile     = config.resolve_profile(call_opts),
+      region = config.resolve_region(call_opts),
+      profile = config.resolve_profile(call_opts),
     }
     render(buf, id)
   end
 
   -- ── get-rest-api ────────────────────────────────────────────────────────────
   spawn.run({
-    "apigateway", "get-rest-api",
-    "--rest-api-id", id,
-    "--output", "json",
+    "apigateway",
+    "get-rest-api",
+    "--rest-api-id",
+    id,
+    "--output",
+    "json",
   }, function(ok, lines)
     if not ok then
       buf_mod.set_error(buf, lines)
@@ -311,9 +343,12 @@ local function fetch(id, buf, call_opts)
 
   -- ── get-stages ──────────────────────────────────────────────────────────────
   spawn.run({
-    "apigateway", "get-stages",
-    "--rest-api-id", id,
-    "--output", "json",
+    "apigateway",
+    "get-stages",
+    "--rest-api-id",
+    id,
+    "--output",
+    "json",
   }, function(ok, lines)
     if not ok then
       partial.stages = {}
@@ -332,10 +367,13 @@ local function fetch(id, buf, call_opts)
 
   -- ── get-resources ───────────────────────────────────────────────────────────
   spawn.run({
-    "apigateway", "get-resources",
-    "--rest-api-id", id,
+    "apigateway",
+    "get-resources",
+    "--rest-api-id",
+    id,
     "--include-value",
-    "--output", "json",
+    "--output",
+    "json",
   }, function(ok, lines)
     if not ok then
       partial.resources = {}
@@ -354,9 +392,12 @@ local function fetch(id, buf, call_opts)
 
   -- ── get-authorizers ─────────────────────────────────────────────────────────
   spawn.run({
-    "apigateway", "get-authorizers",
-    "--rest-api-id", id,
-    "--output", "json",
+    "apigateway",
+    "get-authorizers",
+    "--rest-api-id",
+    id,
+    "--output",
+    "json",
   }, function(ok, lines)
     if not ok then
       partial.authorizers = {}

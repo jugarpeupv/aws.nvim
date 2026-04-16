@@ -33,13 +33,11 @@ end
 local builders = {
 
   ["AWS::S3::Bucket"] = function(id, region)
-    return "https://s3.console.aws.amazon.com/s3/buckets/" .. id
-      .. "?region=" .. region
+    return "https://s3.console.aws.amazon.com/s3/buckets/" .. id .. "?region=" .. region
   end,
 
   ["AWS::Lambda::Function"] = function(id, region)
-    return "https://" .. region .. ".console.aws.amazon.com/lambda/home"
-      .. "?region=" .. region .. "#/functions/" .. id
+    return "https://" .. region .. ".console.aws.amazon.com/lambda/home" .. "?region=" .. region .. "#/functions/" .. id
   end,
 
   ["AWS::IAM::Role"] = function(id, _region)
@@ -68,143 +66,235 @@ local builders = {
 
   ["AWS::Logs::LogGroup"] = function(id, region)
     local encoded = cw_logs_encode(id)
-    return "https://" .. region .. ".console.aws.amazon.com/cloudwatch/home"
-      .. "?region=" .. region .. "#logsV2:log-groups/log-group/" .. encoded
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/cloudwatch/home"
+      .. "?region="
+      .. region
+      .. "#logsV2:log-groups/log-group/"
+      .. encoded
   end,
 
   ["AWS::DynamoDB::Table"] = function(id, region)
-    return "https://" .. region .. ".console.aws.amazon.com/dynamodbv2/home"
-      .. "?region=" .. region .. "#table?name=" .. id
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/dynamodbv2/home"
+      .. "?region="
+      .. region
+      .. "#table?name="
+      .. id
   end,
 
   ["AWS::SQS::Queue"] = function(id, region)
     -- physical_id is the full queue URL
     local encoded = pct_encode(id)
-    return "https://" .. region .. ".console.aws.amazon.com/sqs/v2/home"
-      .. "?region=" .. region .. "#/queues/" .. encoded
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/sqs/v2/home"
+      .. "?region="
+      .. region
+      .. "#/queues/"
+      .. encoded
   end,
 
   ["AWS::SNS::Topic"] = function(id, region)
     -- physical_id is the full ARN
-    return "https://console.aws.amazon.com/sns/v3/home"
-      .. "?region=" .. region .. "#/topic/" .. id
+    return "https://console.aws.amazon.com/sns/v3/home" .. "?region=" .. region .. "#/topic/" .. id
   end,
 
   ["AWS::EC2::Instance"] = function(id, region)
-    return "https://" .. region .. ".console.aws.amazon.com/ec2/home"
-      .. "?region=" .. region .. "#InstanceDetails:instanceId=" .. id
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/ec2/home"
+      .. "?region="
+      .. region
+      .. "#InstanceDetails:instanceId="
+      .. id
   end,
 
   ["AWS::EC2::SecurityGroup"] = function(id, region)
-    return "https://" .. region .. ".console.aws.amazon.com/vpc/home"
-      .. "?region=" .. region .. "#SecurityGroup:groupId=" .. id
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/vpc/home"
+      .. "?region="
+      .. region
+      .. "#SecurityGroup:groupId="
+      .. id
   end,
 
   ["AWS::EC2::VPC"] = function(id, region)
-    return "https://" .. region .. ".console.aws.amazon.com/vpc/home"
-      .. "?region=" .. region .. "#VpcDetails:VpcId=" .. id
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/vpc/home"
+      .. "?region="
+      .. region
+      .. "#VpcDetails:VpcId="
+      .. id
   end,
 
   ["AWS::EC2::Subnet"] = function(id, region)
-    return "https://" .. region .. ".console.aws.amazon.com/vpc/home"
-      .. "?region=" .. region .. "#SubnetDetails:subnetId=" .. id
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/vpc/home"
+      .. "?region="
+      .. region
+      .. "#SubnetDetails:subnetId="
+      .. id
   end,
 
   ["AWS::EC2::InternetGateway"] = function(id, region)
-    return "https://" .. region .. ".console.aws.amazon.com/vpc/home"
-      .. "?region=" .. region .. "#InternetGateway:internetGatewayId=" .. id
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/vpc/home"
+      .. "?region="
+      .. region
+      .. "#InternetGateway:internetGatewayId="
+      .. id
   end,
 
   ["AWS::EC2::RouteTable"] = function(id, region)
-    return "https://" .. region .. ".console.aws.amazon.com/vpc/home"
-      .. "?region=" .. region .. "#RouteTables:routeTableId=" .. id
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/vpc/home"
+      .. "?region="
+      .. region
+      .. "#RouteTables:routeTableId="
+      .. id
   end,
 
   ["AWS::RDS::DBInstance"] = function(id, region)
-    return "https://console.aws.amazon.com/rds/home"
-      .. "?region=" .. region .. "#database:id=" .. id
+    return "https://console.aws.amazon.com/rds/home" .. "?region=" .. region .. "#database:id=" .. id
   end,
 
   ["AWS::RDS::DBCluster"] = function(id, region)
     return "https://console.aws.amazon.com/rds/home"
-      .. "?region=" .. region .. "#database:id=" .. id .. ";is-cluster=true"
+      .. "?region="
+      .. region
+      .. "#database:id="
+      .. id
+      .. ";is-cluster=true"
   end,
 
   ["AWS::ECS::Cluster"] = function(id, region)
     -- physical_id is the cluster ARN; extract name after "cluster/"
     local name = id:match("cluster/(.+)$") or id
-    return "https://" .. region .. ".console.aws.amazon.com/ecs/v2/clusters/"
-      .. name .. "?region=" .. region
+    return "https://" .. region .. ".console.aws.amazon.com/ecs/v2/clusters/" .. name .. "?region=" .. region
   end,
 
   ["AWS::ECS::Service"] = function(id, region)
     -- ARN resource: "service/{cluster}/{service}"
     local cluster, service = id:match("service/([^/]+)/([^/]+)$")
-    if not cluster then return nil end
-    return "https://" .. region .. ".console.aws.amazon.com/ecs/v2/clusters/"
-      .. cluster .. "/services/" .. service .. "?region=" .. region
+    if not cluster then
+      return nil
+    end
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/ecs/v2/clusters/"
+      .. cluster
+      .. "/services/"
+      .. service
+      .. "?region="
+      .. region
   end,
 
   ["AWS::ApiGateway::RestApi"] = function(id, region)
-    return "https://" .. region .. ".console.aws.amazon.com/apigateway/main/apis/"
-      .. id .. "/resources?api=" .. id .. "&region=" .. region
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/apigateway/main/apis/"
+      .. id
+      .. "/resources?api="
+      .. id
+      .. "&region="
+      .. region
   end,
 
   ["AWS::ApiGatewayV2::Api"] = function(id, region)
-    return "https://" .. region .. ".console.aws.amazon.com/apigateway/main/apis/"
-      .. id .. "/routes?api=" .. id .. "&region=" .. region
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/apigateway/main/apis/"
+      .. id
+      .. "/routes?api="
+      .. id
+      .. "&region="
+      .. region
   end,
 
   ["AWS::StepFunctions::StateMachine"] = function(id, region)
-    return "https://" .. region .. ".console.aws.amazon.com/states/home"
-      .. "?region=" .. region .. "#/statemachines/view/" .. id
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/states/home"
+      .. "?region="
+      .. region
+      .. "#/statemachines/view/"
+      .. id
   end,
 
   ["AWS::SecretsManager::Secret"] = function(id, region)
     -- ARN ends in "-XXXXXX" (6-char random suffix); strip it for the name
     local name = id:match("secret:(.+)$") or id
     name = name:gsub("%-%w%w%w%w%w%w$", "")
-    return "https://" .. region .. ".console.aws.amazon.com/secretsmanager/secret"
-      .. "?name=" .. name .. "&region=" .. region
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/secretsmanager/secret"
+      .. "?name="
+      .. name
+      .. "&region="
+      .. region
   end,
 
   ["AWS::SSM::Parameter"] = function(id, region)
     local encoded = id:gsub("/", "%%2F")
-    return "https://" .. region .. ".console.aws.amazon.com/systems-manager/parameters/"
-      .. encoded .. "/description?region=" .. region
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/systems-manager/parameters/"
+      .. encoded
+      .. "/description?region="
+      .. region
   end,
 
   ["AWS::KMS::Key"] = function(id, region)
-    return "https://console.aws.amazon.com/kms/home"
-      .. "?region=" .. region .. "#/kms/keys/" .. id
+    return "https://console.aws.amazon.com/kms/home" .. "?region=" .. region .. "#/kms/keys/" .. id
   end,
 
   ["AWS::KMS::Alias"] = function(id, region)
     -- physical_id is the alias name, e.g. "alias/my-key"
-    return "https://console.aws.amazon.com/kms/home"
-      .. "?region=" .. region .. "#/kms/aliases"
+    return "https://console.aws.amazon.com/kms/home" .. "?region=" .. region .. "#/kms/aliases"
   end,
 
   ["AWS::ElasticLoadBalancingV2::LoadBalancer"] = function(id, region)
-    return "https://" .. region .. ".console.aws.amazon.com/ec2/home"
-      .. "?region=" .. region .. "#LoadBalancer:loadBalancerArn=" .. id
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/ec2/home"
+      .. "?region="
+      .. region
+      .. "#LoadBalancer:loadBalancerArn="
+      .. id
   end,
 
   ["AWS::ElasticLoadBalancingV2::TargetGroup"] = function(id, region)
-    return "https://" .. region .. ".console.aws.amazon.com/ec2/home"
-      .. "?region=" .. region .. "#TargetGroup:targetGroupArn=" .. id
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/ec2/home"
+      .. "?region="
+      .. region
+      .. "#TargetGroup:targetGroupArn="
+      .. id
   end,
 
   ["AWS::CloudFormation::Stack"] = function(id, region)
     -- physical_id is the nested stack ARN
     local encoded = pct_encode(id)
-    return "https://" .. region .. ".console.aws.amazon.com/cloudformation/home"
-      .. "?region=" .. region .. "#/stacks/stackinfo?stackId=" .. encoded
+    return "https://"
+      .. region
+      .. ".console.aws.amazon.com/cloudformation/home"
+      .. "?region="
+      .. region
+      .. "#/stacks/stackinfo?stackId="
+      .. encoded
   end,
 
   ["AWS::Events::Rule"] = function(id, region)
-    return "https://" .. region .. ".console.aws.amazon.com/events/home"
-      .. "?region=" .. region .. "#/rules/" .. id
+    return "https://" .. region .. ".console.aws.amazon.com/events/home" .. "?region=" .. region .. "#/rules/" .. id
   end,
 
   ["AWS::SNS::Subscription"] = function(_id, _region)
@@ -223,16 +313,26 @@ local builders = {
 ---@param region        string
 ---@return string|nil
 function M.build(resource_type, physical_id, region)
-  if not physical_id or physical_id == "" then return nil end
+  if not physical_id or physical_id == "" then
+    return nil
+  end
   -- Skip CDK metadata and custom resources
-  if resource_type == "AWS::CDK::Metadata" then return nil end
-  if resource_type:match("^Custom::") then return nil end
+  if resource_type == "AWS::CDK::Metadata" then
+    return nil
+  end
+  if resource_type:match("^Custom::") then
+    return nil
+  end
 
   local builder = builders[resource_type]
-  if not builder then return nil end
+  if not builder then
+    return nil
+  end
 
   local ok, url = pcall(builder, physical_id, region)
-  if ok and type(url) == "string" then return url end
+  if ok and type(url) == "string" then
+    return url
+  end
   return nil
 end
 
@@ -240,8 +340,12 @@ end
 ---@param resource_type string
 ---@return boolean
 function M.has_link(resource_type)
-  if resource_type == "AWS::CDK::Metadata" then return false end
-  if resource_type:match("^Custom::") then return false end
+  if resource_type == "AWS::CDK::Metadata" then
+    return false
+  end
+  if resource_type:match("^Custom::") then
+    return false
+  end
   return builders[resource_type] ~= nil
 end
 

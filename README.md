@@ -243,6 +243,89 @@ opens with those overrides applied.
 ---
 
 
+## Development
+
+### Prerequisites
+
+| Tool | Purpose | Install |
+|---|---|---|
+| Neovim >= 0.9 | test runtime | [neovim.io](https://neovim.io) |
+| [stylua](https://github.com/JohnnyMorganz/StyLua) | Lua formatter | `cargo install stylua` or [GitHub releases](https://github.com/JohnnyMorganz/StyLua/releases) |
+| [luacheck](https://github.com/mpeterv/luacheck) | Lua linter | `luarocks install luacheck` |
+
+### Running tests
+
+Tests use [plenary.nvim](https://github.com/nvim-lua/plenary.nvim) as the test harness and run inside headless Neovim.
+
+```bash
+# Clone plenary into the .deps directory (one-time setup)
+mkdir -p .deps
+git clone --depth 1 https://github.com/nvim-lua/plenary.nvim .deps/plenary.nvim
+
+# Run the full test suite
+nvim --headless \
+     -u spec/init.lua \
+     -c "lua require('plenary.test_harness').test_directory('spec', { minimal_init = 'spec/init.lua' })" \
+     -c "qa!"
+```
+
+Test files live in `spec/aws/` and mirror the `lua/aws/` layout:
+
+```
+spec/
+├── init.lua                  # Minimal Neovim init used by the test runner
+└── aws/
+    ├── config_spec.lua       # Tests for lua/aws/config.lua
+    ├── buffer_spec.lua       # Tests for lua/aws/buffer.lua
+    └── spawn_spec.lua        # Tests for lua/aws/spawn.lua
+```
+
+### Lua style
+
+All Lua code is formatted with **stylua**. The style is configured in `.stylua.toml`:
+
+- 2-space indentation
+- 120-character column width
+- Double-quote strings
+
+```bash
+# Check formatting (what CI does)
+stylua --check lua/ spec/
+
+# Auto-format in place
+stylua lua/ spec/
+```
+
+### Lua lint
+
+Static analysis is run with **luacheck**, configured in `.luacheckrc`:
+
+```bash
+luacheck lua/ spec/ --config .luacheckrc
+```
+
+### CI pipeline
+
+The GitHub Actions workflow (`.github/workflows/release.yml`) runs three jobs on every push to `main`:
+
+| Job | What it does |
+|---|---|
+| `lint` | Runs `stylua --check` and `luacheck` |
+| `test` | Runs the full test suite in headless Neovim |
+| `release-please` | Opens/updates a release PR (only runs if lint + test pass) |
+
+### Commit conventions
+
+This project follows [Conventional Commits](https://www.conventionalcommits.org/) for automated semver releases via release-please:
+
+| Prefix | Semver bump | Example |
+|---|---|---|
+| `fix:` | patch `0.0.x` | `fix: correct S3 date highlighting` |
+| `feat:` | minor `0.x.0` | `feat: add EC2 instance list` |
+| `feat!:` or `BREAKING CHANGE:` | major `x.0.0` | `feat!: redesign config API` |
+
+---
+
 ## Architecture
 
 ```

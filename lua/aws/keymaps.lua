@@ -9,12 +9,14 @@ local M = {}
 ---@param fn   function
 ---@param desc string
 local function map(buf, key, fn, desc)
-  if not key or key == false then return end
+  if not key or key == false then
+    return
+  end
   vim.keymap.set("n", key, fn, {
-    buffer  = buf,
+    buffer = buf,
     noremap = true,
-    silent  = true,
-    desc    = "aws.nvim: " .. desc,
+    silent = true,
+    desc = "aws.nvim: " .. desc,
   })
 end
 
@@ -29,24 +31,24 @@ end
 ---@param fn   fun(r1: integer, r2: integer)
 ---@param desc string
 local function vmap(buf, key, fn, desc)
-  if not key or key == false then return end
+  if not key or key == false then
+    return
+  end
   vim.keymap.set("v", key, function()
     -- getpos("v") returns the *start* of the visual selection in all visual modes.
     -- The current cursor position is the *end*.
-    local vpos   = vim.fn.getpos("v")   -- {bufnum, line, col, off}
+    local vpos = vim.fn.getpos("v") -- {bufnum, line, col, off}
     local curpos = vim.fn.getpos(".")
-    local r1 = math.min(vpos[2],   curpos[2])
-    local r2 = math.max(vpos[2],   curpos[2])
+    local r1 = math.min(vpos[2], curpos[2])
+    local r2 = math.max(vpos[2], curpos[2])
     -- Exit visual mode first so ui.select / vim.notify work cleanly.
-    vim.api.nvim_feedkeys(
-      vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "nx", false
-    )
+    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "nx", false)
     fn(r1, r2)
   end, {
-    buffer  = buf,
+    buffer = buf,
     noremap = true,
-    silent  = true,
-    desc    = "aws.nvim: " .. desc,
+    silent = true,
+    desc = "aws.nvim: " .. desc,
   })
 end
 
@@ -58,11 +60,11 @@ function M.apply_cloudformation(buf, actions)
   local km = require("aws.config").values.keymaps.cloudformation
 
   map(buf, km.open_resources, actions.open_resources, "open stack resources")
-  map(buf, km.open_events,    actions.open_events,    "open stack events")
-  map(buf, km.delete,         actions.delete,          "delete stack")
-  map(buf, km.filter,         actions.filter,          "filter stacks")
-  map(buf, km.clear_filter,   actions.clear_filter,    "clear filter")
-  map(buf, km.refresh,        actions.refresh,         "refresh stacks")
+  map(buf, km.open_events, actions.open_events, "open stack events")
+  map(buf, km.delete, actions.delete, "delete stack")
+  map(buf, km.filter, actions.filter, "filter stacks")
+  map(buf, km.clear_filter, actions.clear_filter, "clear filter")
+  map(buf, km.refresh, actions.refresh, "refresh stacks")
   -- Visual-mode delete
   vmap(buf, km.delete, actions.delete_visual, "delete selected stacks")
 end
@@ -73,8 +75,8 @@ end
 function M.apply_cloudformation_resources(buf, actions)
   local km = require("aws.config").values.keymaps.cloudformation
 
-  map(buf, km.refresh,     actions.refresh,     "refresh resources")
-  map(buf, km.open_events, actions.open_events,  "open stack events")
+  map(buf, km.refresh, actions.refresh, "refresh resources")
+  map(buf, km.open_events, actions.open_events, "open stack events")
 end
 
 --- Apply CloudFormation events-buffer keymaps.
@@ -92,12 +94,12 @@ end
 function M.apply_s3(buf, actions)
   local km = require("aws.config").values.keymaps.s3
 
-  map(buf, km.open_bucket,  actions.open_bucket,  "open bucket in oil.nvim")
-  map(buf, km.empty,        actions.empty,        "empty bucket")
-  map(buf, km.delete,       actions.delete,        "delete bucket")
-  map(buf, km.filter,       actions.filter,        "filter buckets")
-  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
-  map(buf, km.refresh,      actions.refresh,       "refresh buckets")
+  map(buf, km.open_bucket, actions.open_bucket, "open bucket in oil.nvim")
+  map(buf, km.empty, actions.empty, "empty bucket")
+  map(buf, km.delete, actions.delete, "delete bucket")
+  map(buf, km.filter, actions.filter, "filter buckets")
+  map(buf, km.clear_filter, actions.clear_filter, "clear filter")
+  map(buf, km.refresh, actions.refresh, "refresh buckets")
   -- Visual-mode delete
   vmap(buf, km.delete, actions.delete_visual, "delete selected buckets")
 end
@@ -109,10 +111,10 @@ function M.apply_cloudwatch(buf, actions)
   local km = require("aws.config").values.keymaps.cloudwatch
 
   map(buf, km.open_streams, actions.open_streams, "open log streams")
-  map(buf, km.delete,       actions.delete,        "delete log group")
-  map(buf, km.filter,       actions.filter,        "filter log groups")
-  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
-  map(buf, km.refresh,      actions.refresh,       "refresh log groups")
+  map(buf, km.delete, actions.delete, "delete log group")
+  map(buf, km.filter, actions.filter, "filter log groups")
+  map(buf, km.clear_filter, actions.clear_filter, "clear filter")
+  map(buf, km.refresh, actions.refresh, "refresh log groups")
   -- Visual-mode delete
   vmap(buf, km.delete, actions.delete_visual, "delete selected log groups")
 end
@@ -124,7 +126,7 @@ function M.apply_cloudwatch_streams(buf, actions)
   local km = require("aws.config").values.keymaps.cloudwatch
 
   map(buf, km.open_logs, actions.open_logs, "open log events")
-  map(buf, km.refresh,   actions.refresh,   "refresh streams")
+  map(buf, km.refresh, actions.refresh, "refresh streams")
 end
 
 --- Apply CloudWatch log events-buffer keymaps.
@@ -142,12 +144,12 @@ end
 function M.apply_lambda(buf, actions)
   local km = require("aws.config").values.keymaps.lambda
 
-  map(buf, km.open_detail,  actions.open_detail,  "open lambda function detail")
-  map(buf, km.open_logs,    actions.open_logs,     "open CloudWatch logs for function")
-  map(buf, km.delete,       actions.delete,        "delete lambda function")
-  map(buf, km.filter,       actions.filter,        "filter functions")
-  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
-  map(buf, km.refresh,      actions.refresh,       "refresh functions")
+  map(buf, km.open_detail, actions.open_detail, "open lambda function detail")
+  map(buf, km.open_logs, actions.open_logs, "open CloudWatch logs for function")
+  map(buf, km.delete, actions.delete, "delete lambda function")
+  map(buf, km.filter, actions.filter, "filter functions")
+  map(buf, km.clear_filter, actions.clear_filter, "clear filter")
+  map(buf, km.refresh, actions.refresh, "refresh functions")
   -- Visual-mode delete
   vmap(buf, km.delete, actions.delete_visual, "delete selected lambda functions")
 end
@@ -159,7 +161,7 @@ function M.apply_lambda_detail(buf, actions)
   local km = require("aws.config").values.keymaps.lambda
 
   map(buf, km.detail_logs, actions.open_logs, "open CloudWatch logs for function")
-  map(buf, km.refresh,     actions.refresh,   "refresh detail")
+  map(buf, km.refresh, actions.refresh, "refresh detail")
 end
 
 --- Apply ACM certificates-buffer keymaps.
@@ -168,11 +170,11 @@ end
 function M.apply_acm(buf, actions)
   local km = require("aws.config").values.keymaps.acm
 
-  map(buf, km.open_detail,  actions.open_detail,  "open certificate detail")
-  map(buf, km.delete,       actions.delete,        "delete certificate")
-  map(buf, km.filter,       actions.filter,        "filter certificates")
-  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
-  map(buf, km.refresh,      actions.refresh,       "refresh certificates")
+  map(buf, km.open_detail, actions.open_detail, "open certificate detail")
+  map(buf, km.delete, actions.delete, "delete certificate")
+  map(buf, km.filter, actions.filter, "filter certificates")
+  map(buf, km.clear_filter, actions.clear_filter, "clear filter")
+  map(buf, km.refresh, actions.refresh, "refresh certificates")
   -- Visual-mode delete
   vmap(buf, km.delete, actions.delete_visual, "delete selected certificates")
 end
@@ -192,11 +194,11 @@ end
 function M.apply_secretsmanager(buf, actions)
   local km = require("aws.config").values.keymaps.secretsmanager
 
-  map(buf, km.open_detail,  actions.open_detail,  "open secret detail")
-  map(buf, km.delete,       actions.delete,        "delete secret")
-  map(buf, km.filter,       actions.filter,        "filter secrets")
-  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
-  map(buf, km.refresh,      actions.refresh,       "refresh secrets")
+  map(buf, km.open_detail, actions.open_detail, "open secret detail")
+  map(buf, km.delete, actions.delete, "delete secret")
+  map(buf, km.filter, actions.filter, "filter secrets")
+  map(buf, km.clear_filter, actions.clear_filter, "clear filter")
+  map(buf, km.refresh, actions.refresh, "refresh secrets")
   -- Visual-mode delete
   vmap(buf, km.delete, actions.delete_visual, "delete selected secrets")
 end
@@ -208,7 +210,7 @@ function M.apply_secretsmanager_detail(buf, actions)
   local km = require("aws.config").values.keymaps.secretsmanager
 
   map(buf, km.detail_refresh, actions.refresh, "refresh secret detail")
-  map(buf, km.reveal,         actions.reveal,  "toggle reveal secret value")
+  map(buf, km.reveal, actions.reveal, "toggle reveal secret value")
 end
 
 --- Apply CloudFront distributions-buffer keymaps.
@@ -217,11 +219,11 @@ end
 function M.apply_cloudfront(buf, actions)
   local km = require("aws.config").values.keymaps.cloudfront
 
-  map(buf, km.open_detail,  actions.open_detail,  "open distribution detail")
-  map(buf, km.invalidate,   actions.invalidate,    "create cache invalidation")
-  map(buf, km.filter,       actions.filter,        "filter distributions")
-  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
-  map(buf, km.refresh,      actions.refresh,       "refresh distributions")
+  map(buf, km.open_detail, actions.open_detail, "open distribution detail")
+  map(buf, km.invalidate, actions.invalidate, "create cache invalidation")
+  map(buf, km.filter, actions.filter, "filter distributions")
+  map(buf, km.clear_filter, actions.clear_filter, "clear filter")
+  map(buf, km.refresh, actions.refresh, "refresh distributions")
 end
 
 --- Apply CloudFront distribution detail-buffer keymaps.
@@ -230,7 +232,7 @@ end
 function M.apply_cloudfront_detail(buf, actions)
   local km = require("aws.config").values.keymaps.cloudfront
 
-  map(buf, km.detail_refresh,    actions.refresh,    "refresh distribution detail")
+  map(buf, km.detail_refresh, actions.refresh, "refresh distribution detail")
   map(buf, km.detail_invalidate, actions.invalidate, "create cache invalidation")
 end
 
@@ -240,10 +242,10 @@ end
 function M.apply_apigateway(buf, actions)
   local km = require("aws.config").values.keymaps.apigateway
 
-  map(buf, km.open_detail,  actions.open_detail,  "open REST API detail")
-  map(buf, km.filter,       actions.filter,        "filter REST APIs")
-  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
-  map(buf, km.refresh,      actions.refresh,       "refresh REST APIs")
+  map(buf, km.open_detail, actions.open_detail, "open REST API detail")
+  map(buf, km.filter, actions.filter, "filter REST APIs")
+  map(buf, km.clear_filter, actions.clear_filter, "clear filter")
+  map(buf, km.refresh, actions.refresh, "refresh REST APIs")
 end
 
 --- Apply API Gateway detail-buffer keymaps.
@@ -261,10 +263,10 @@ end
 function M.apply_ecs(buf, actions)
   local km = require("aws.config").values.keymaps.ecs
 
-  map(buf, km.open_detail,  actions.open_detail,  "open ECS cluster detail")
-  map(buf, km.filter,       actions.filter,        "filter clusters")
-  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
-  map(buf, km.refresh,      actions.refresh,       "refresh clusters")
+  map(buf, km.open_detail, actions.open_detail, "open ECS cluster detail")
+  map(buf, km.filter, actions.filter, "filter clusters")
+  map(buf, km.clear_filter, actions.clear_filter, "clear filter")
+  map(buf, km.refresh, actions.refresh, "refresh clusters")
 end
 
 --- Apply ECS cluster detail-buffer keymaps.
@@ -283,7 +285,7 @@ function M.apply_iam_menu(buf, actions)
   local km = require("aws.config").values.keymaps.iam
 
   map(buf, km.open_list, actions.open_list, "open IAM resource list")
-  map(buf, km.refresh,   actions.refresh,   "refresh IAM menu")
+  map(buf, km.refresh, actions.refresh, "refresh IAM menu")
 end
 
 --- Apply IAM resource list-buffer keymaps (users / groups / roles / policies / providers).
@@ -292,10 +294,10 @@ end
 function M.apply_iam_list(buf, actions)
   local km = require("aws.config").values.keymaps.iam
 
-  map(buf, km.open_detail,  actions.open_detail,  "open IAM resource detail")
-  map(buf, km.filter,       actions.filter,        "filter IAM resources")
-  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
-  map(buf, km.refresh,      actions.refresh,       "refresh IAM resources")
+  map(buf, km.open_detail, actions.open_detail, "open IAM resource detail")
+  map(buf, km.filter, actions.filter, "filter IAM resources")
+  map(buf, km.clear_filter, actions.clear_filter, "clear filter")
+  map(buf, km.refresh, actions.refresh, "refresh IAM resources")
   -- toggle_scope is only wired by policies.lua; safely no-op if nil
   if actions.toggle_scope then
     map(buf, km.toggle_scope, actions.toggle_scope, "toggle policy scope (Local/All)")
@@ -317,10 +319,10 @@ end
 function M.apply_vpc(buf, actions)
   local km = require("aws.config").values.keymaps.vpc
 
-  map(buf, km.open_detail,  actions.open_detail,  "open VPC menu")
-  map(buf, km.filter,       actions.filter,        "filter VPCs")
-  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
-  map(buf, km.refresh,      actions.refresh,       "refresh VPCs")
+  map(buf, km.open_detail, actions.open_detail, "open VPC menu")
+  map(buf, km.filter, actions.filter, "filter VPCs")
+  map(buf, km.clear_filter, actions.clear_filter, "clear filter")
+  map(buf, km.refresh, actions.refresh, "refresh VPCs")
 end
 
 --- Apply VPC section-menu keymaps (mirrors IAM menu).
@@ -330,7 +332,7 @@ function M.apply_vpc_menu(buf, actions)
   local km = require("aws.config").values.keymaps.vpc
 
   map(buf, km.open_detail, actions.open_detail, "open VPC section")
-  map(buf, km.refresh,     actions.refresh,     "refresh VPC menu")
+  map(buf, km.refresh, actions.refresh, "refresh VPC menu")
 end
 
 --- Apply VPC section / detail-buffer keymaps.
@@ -341,12 +343,12 @@ end
 function M.apply_vpc_section(buf, actions)
   local km = require("aws.config").values.keymaps.vpc
 
-  map(buf, km.detail_refresh, actions.refresh,      "refresh")
+  map(buf, km.detail_refresh, actions.refresh, "refresh")
   if actions.open_detail then
     map(buf, km.open_detail, actions.open_detail, "open detail")
   end
   if actions.filter then
-    map(buf, km.filter,       actions.filter,       "filter")
+    map(buf, km.filter, actions.filter, "filter")
     map(buf, km.clear_filter, actions.clear_filter, "clear filter")
   end
 end
@@ -364,11 +366,11 @@ end
 function M.apply_dynamodb(buf, actions)
   local km = require("aws.config").values.keymaps.dynamodb
 
-  map(buf, km.open_menu,    actions.open_menu,    "open DynamoDB table menu")
-  map(buf, km.delete,       actions.delete,        "delete DynamoDB table")
-  map(buf, km.filter,       actions.filter,        "filter DynamoDB tables")
-  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
-  map(buf, km.refresh,      actions.refresh,       "refresh DynamoDB tables")
+  map(buf, km.open_menu, actions.open_menu, "open DynamoDB table menu")
+  map(buf, km.delete, actions.delete, "delete DynamoDB table")
+  map(buf, km.filter, actions.filter, "filter DynamoDB tables")
+  map(buf, km.clear_filter, actions.clear_filter, "clear filter")
+  map(buf, km.refresh, actions.refresh, "refresh DynamoDB tables")
   -- Visual-mode delete
   vmap(buf, km.delete, actions.delete_visual, "delete selected DynamoDB tables")
 end
@@ -379,8 +381,8 @@ end
 function M.apply_dynamodb_menu(buf, actions)
   local km = require("aws.config").values.keymaps.dynamodb
 
-  map(buf, km.menu_open,    actions.open_section, "open DynamoDB table section")
-  map(buf, km.menu_refresh, actions.refresh,      "refresh DynamoDB table menu")
+  map(buf, km.menu_open, actions.open_section, "open DynamoDB table section")
+  map(buf, km.menu_refresh, actions.refresh, "refresh DynamoDB table menu")
 end
 
 --- Apply DynamoDB detail / scan buffer keymaps.
@@ -392,7 +394,7 @@ function M.apply_dynamodb_section(buf, actions)
 
   map(buf, km.detail_refresh, actions.refresh, "refresh")
   if actions.scan_run then
-    map(buf, km.scan_run,  actions.scan_run,  "run scan / query")
+    map(buf, km.scan_run, actions.scan_run, "run scan / query")
   end
   if actions.scan_next then
     map(buf, km.scan_next, actions.scan_next, "next page of results")
@@ -408,11 +410,11 @@ end
 function M.apply_ec2(buf, actions)
   local km = require("aws.config").values.keymaps.ec2
 
-  map(buf, km.open_detail,  actions.open_detail,  "open EC2 instance detail")
-  map(buf, km.filter,       actions.filter,        "filter instances")
-  map(buf, km.clear_filter, actions.clear_filter,  "clear filter")
-  map(buf, km.refresh,      actions.refresh,       "refresh instances")
-  map(buf, km.close,        actions.close,         "close split")
+  map(buf, km.open_detail, actions.open_detail, "open EC2 instance detail")
+  map(buf, km.filter, actions.filter, "filter instances")
+  map(buf, km.clear_filter, actions.clear_filter, "clear filter")
+  map(buf, km.refresh, actions.refresh, "refresh instances")
+  map(buf, km.close, actions.close, "close split")
 end
 
 --- Apply EC2 instance detail-buffer keymaps.

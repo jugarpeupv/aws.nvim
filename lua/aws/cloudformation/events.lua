@@ -1,10 +1,10 @@
 --- aws.nvim – CloudFormation stack events viewer
 local M = {}
 
-local spawn   = require("aws.spawn")
+local spawn = require("aws.spawn")
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local FILETYPE = "aws-cloudformation"
 
@@ -19,9 +19,12 @@ end
 local function fetch(stack_name, buf, call_opts)
   buf_mod.set_loading(buf)
   spawn.run({
-    "cloudformation", "describe-stack-events",
-    "--stack-name", stack_name,
-    "--query", table.concat({
+    "cloudformation",
+    "describe-stack-events",
+    "--stack-name",
+    stack_name,
+    "--query",
+    table.concat({
       "StackEvents[*].{",
       "Time:Timestamp,",
       "Resource:LogicalResourceId,",
@@ -29,7 +32,8 @@ local function fetch(stack_name, buf, call_opts)
       "Status:ResourceStatus,",
       "Reason:ResourceStatusReason}",
     }, ""),
-    "--output", "json",
+    "--output",
+    "json",
   }, function(ok, lines)
     if not ok then
       buf_mod.set_error(buf, lines)
@@ -45,8 +49,10 @@ local function fetch(stack_name, buf, call_opts)
 
     local sep = "  " .. string.rep("-", 110)
     local region = config.resolve_region(call_opts)
-    local title  = "  Events  >>  " .. stack_name
-    if region then title = title .. "   [region: " .. region .. "]" end
+    local title = "  Events  >>  " .. stack_name
+    if region then
+      title = title .. "   [region: " .. region .. "]"
+    end
     local out = {
       title,
       sep,
@@ -56,14 +62,11 @@ local function fetch(stack_name, buf, call_opts)
     }
 
     for _, ev in ipairs(data) do
-      local time     = (type(ev.Time)     == "string" and ev.Time     or ""):gsub("T", " "):gsub("%.%d+Z$", ""):gsub("Z$", "")
-      local resource = type(ev.Resource)  == "string" and ev.Resource  or ""
-      local status   = type(ev.Status)    == "string" and ev.Status    or ""
-      local reason   = type(ev.Reason)    == "string" and ev.Reason    or ""
-      table.insert(out, string.format(
-        "  %-26s  %-40s  %-36s  %s",
-        time, resource, status, reason
-      ))
+      local time = (type(ev.Time) == "string" and ev.Time or ""):gsub("T", " "):gsub("%.%d+Z$", ""):gsub("Z$", "")
+      local resource = type(ev.Resource) == "string" and ev.Resource or ""
+      local status = type(ev.Status) == "string" and ev.Status or ""
+      local reason = type(ev.Reason) == "string" and ev.Reason or ""
+      table.insert(out, string.format("  %-26s  %-40s  %-36s  %s", time, resource, status, reason))
     end
 
     table.insert(out, "")
@@ -86,8 +89,12 @@ function M.open(stack_name, call_opts)
   buf_mod.open_split(buf)
 
   keymaps.apply_cloudformation_events(buf, {
-    refresh = function() fetch(stack_name, buf, call_opts) end,
-    close   = function() buf_mod.close_split(buf) end,
+    refresh = function()
+      fetch(stack_name, buf, call_opts)
+    end,
+    close = function()
+      buf_mod.close_split(buf)
+    end,
   })
 
   fetch(stack_name, buf, call_opts)

@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # ── Lua style check ─────────────────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install luacheck
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y luarocks
+          sudo luarocks install luacheck
+
+      - name: Install stylua
+        uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: latest
+          args: --check lua/ spec/
+
+      - name: Run luacheck
+        run: luacheck lua/ spec/ --config .luacheckrc
+
+  # ── Tests ────────────────────────────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Neovim (stable)
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+
+      - name: Clone plenary.nvim
+        run: |
+          mkdir -p .deps
+          git clone --depth 1 https://github.com/nvim-lua/plenary.nvim .deps/plenary.nvim
+
+      - name: Run tests
+        run: |
+          nvim --headless \
+               -u spec/init.lua \
+               -c "lua require('plenary.test_harness').test_directory('spec', { minimal_init = 'spec/init.lua' })" \
+               -c "qa!"
+
+  # ── Release (only after lint + test pass) ───────────────────────────────────
+  release-please:
+    name: Release
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          release-type: simple
+          token: ${{ secrets.GITHUB_TOKEN }}

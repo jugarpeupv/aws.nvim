@@ -18,16 +18,18 @@ function M.get_or_create(name, filetype)
     return existing
   end
 
-  local buf = vim.api.nvim_create_buf(true, true)   -- listed=true, scratch=true
+  local buf = vim.api.nvim_create_buf(true, true) -- listed=true, scratch=true
   vim.api.nvim_buf_set_name(buf, name)
-  vim.bo[buf].buftype   = "nofile"
-  vim.bo[buf].bufhidden = "hide"                    -- keep buffer alive when window closes
-  vim.bo[buf].swapfile  = false
-  vim.bo[buf].filetype  = filetype or "aws"
+  vim.bo[buf].buftype = "nofile"
+  vim.bo[buf].bufhidden = "hide" -- keep buffer alive when window closes
+  vim.bo[buf].swapfile = false
+  vim.bo[buf].filetype = filetype or "aws"
 
   -- Remove from registry when the buffer is wiped
   vim.api.nvim_buf_attach(buf, false, {
-    on_detach = function() registry[name] = nil end,
+    on_detach = function()
+      registry[name] = nil
+    end,
   })
 
   registry[name] = buf
@@ -81,11 +83,11 @@ function M.open_split(buf)
   vim.cmd("split")
   local win = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(win, buf)
-  vim.cmd("wincmd J")  -- move to the very bottom
+  vim.cmd("wincmd J") -- move to the very bottom
 
   vim.wo[win].cursorline = true
-  vim.wo[win].wrap       = false
-  vim.wo[win].number     = false
+  vim.wo[win].wrap = false
+  vim.wo[win].number = false
   vim.wo[win].signcolumn = "no"
 
   return win
@@ -118,8 +120,8 @@ function M.open_vsplit(buf)
   vim.api.nvim_win_set_buf(win, buf)
 
   vim.wo[win].cursorline = true
-  vim.wo[win].wrap       = false
-  vim.wo[win].number     = false
+  vim.wo[win].wrap = false
+  vim.wo[win].number = false
   vim.wo[win].signcolumn = "no"
 
   return win

@@ -1,10 +1,10 @@
 --- aws.nvim – EC2 instances list, filter, and render
 local M = {}
 
-local spawn   = require("aws.spawn")
+local spawn = require("aws.spawn")
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local FILETYPE = "aws-ec2"
 
@@ -19,7 +19,7 @@ local FILETYPE = "aws-ec2"
 ---@field profile    string|nil
 
 --- State keyed by identity string (e.g. "us-east-1" or "prod@eu-west-1")
-local _state = {}  -- identity -> Ec2InstancesState
+local _state = {} -- identity -> Ec2InstancesState
 
 local function buf_name(identity)
   return "aws://ec2/instances/" .. identity
@@ -34,7 +34,9 @@ end
 ---@return string
 local function pad_right(s, width)
   local display_len = vim.fn.strdisplaywidth(s)
-  if display_len >= width then return s end
+  if display_len >= width then
+    return s
+  end
   return s .. string.rep(" ", width - display_len)
 end
 
@@ -42,16 +44,20 @@ end
 ---@param max integer
 ---@return string
 local function truncate(s, max)
-  if vim.fn.strdisplaywidth(s) <= max then return s end
+  if vim.fn.strdisplaywidth(s) <= max then
+    return s
+  end
   local result = ""
-  local cols   = 0
+  local cols = 0
   local nchars = vim.fn.strchars(s)
   for i = 0, nchars - 1 do
     local ch = vim.fn.strcharpart(s, i, 1)
-    local w  = vim.fn.strdisplaywidth(ch)
-    if cols + w > max - 1 then break end
+    local w = vim.fn.strdisplaywidth(ch)
+    if cols + w > max - 1 then
+      break
+    end
     result = result .. ch
-    cols   = cols + w
+    cols = cols + w
   end
   return result .. "…"
 end
@@ -61,7 +67,9 @@ end
 ---@param fallback string
 ---@return string
 local function name_tag(tags, fallback)
-  if type(tags) ~= "table" then return fallback end
+  if type(tags) ~= "table" then
+    return fallback
+  end
   for _, t in ipairs(tags) do
     if t.Key == "Name" and t.Value and t.Value ~= "" then
       return t.Value
@@ -72,7 +80,7 @@ end
 
 --- Map EC2 state codes to short labels.
 local STATE_LABELS = {
-  ["0"]  = "pending",
+  ["0"] = "pending",
   ["16"] = "running",
   ["32"] = "shutting-down",
   ["48"] = "terminated",
@@ -90,32 +98,42 @@ end
 local function hint_line()
   local km = config.values.keymaps.ec2
   local hints = {}
-  if km.open_detail  then table.insert(hints, km.open_detail  .. " detail")  end
-  if km.filter       then table.insert(hints, km.filter       .. " filter")  end
-  if km.clear_filter then table.insert(hints, km.clear_filter .. " clear")   end
-  if km.refresh      then table.insert(hints, km.refresh      .. " refresh") end
-  if km.close        then table.insert(hints, km.close        .. " close")   end
+  if km.open_detail then
+    table.insert(hints, km.open_detail .. " detail")
+  end
+  if km.filter then
+    table.insert(hints, km.filter .. " filter")
+  end
+  if km.clear_filter then
+    table.insert(hints, km.clear_filter .. " clear")
+  end
+  if km.refresh then
+    table.insert(hints, km.refresh .. " refresh")
+  end
+  if km.close then
+    table.insert(hints, km.close .. " close")
+  end
   return table.concat(hints, "  |  ")
 end
 
 ---@param buf integer
 ---@param st  Ec2InstancesState
 local function render(buf, st)
-  local id_width    = 11  -- "Instance ID"   i-0123456789abcdef0 = 19 chars; col header shorter
-  local name_width  = 4   -- "Name"
-  local type_width  = 4   -- "Type"
-  local state_width = 5   -- "State"
-  local az_width    = 2   -- "AZ"
-  local ip_width    = 10  -- "Private IP"
+  local id_width = 11 -- "Instance ID"   i-0123456789abcdef0 = 19 chars; col header shorter
+  local name_width = 4 -- "Name"
+  local type_width = 4 -- "Type"
+  local state_width = 5 -- "State"
+  local az_width = 2 -- "AZ"
+  local ip_width = 10 -- "Private IP"
 
   -- First pass: measure column widths for visible rows
   for _, inst in ipairs(st.items) do
-    local id    = inst.InstanceId or ""
-    local nm    = name_tag(inst.Tags, "")
+    local id = inst.InstanceId or ""
+    local nm = name_tag(inst.Tags, "")
     local itype = inst.InstanceType or ""
     local state = instance_state(inst)
-    local az    = (type(inst.Placement) == "table" and inst.Placement.AvailabilityZone) or ""
-    local ip    = inst.PrivateIpAddress or ""
+    local az = (type(inst.Placement) == "table" and inst.Placement.AvailabilityZone) or ""
+    local ip = inst.PrivateIpAddress or ""
 
     -- apply filter on name OR id
     local display_name = nm ~= "" and nm or id
@@ -125,56 +143,73 @@ local function render(buf, st)
 
     if matches then
       local nw = vim.fn.strdisplaywidth(id)
-      if nw > id_width    then id_width    = nw end
+      if nw > id_width then
+        id_width = nw
+      end
       nw = vim.fn.strdisplaywidth(nm)
-      if nw > name_width  then name_width  = nw end
+      if nw > name_width then
+        name_width = nw
+      end
       nw = vim.fn.strdisplaywidth(itype)
-      if nw > type_width  then type_width  = nw end
+      if nw > type_width then
+        type_width = nw
+      end
       nw = vim.fn.strdisplaywidth(state)
-      if nw > state_width then state_width = nw end
+      if nw > state_width then
+        state_width = nw
+      end
       nw = vim.fn.strdisplaywidth(az)
-      if nw > az_width    then az_width    = nw end
+      if nw > az_width then
+        az_width = nw
+      end
       nw = vim.fn.strdisplaywidth(ip)
-      if nw > ip_width    then ip_width    = nw end
+      if nw > ip_width then
+        ip_width = nw
+      end
     end
   end
-  id_width    = id_width    + 2
-  name_width  = name_width  + 2
-  type_width  = type_width  + 2
+  id_width = id_width + 2
+  name_width = name_width + 2
+  type_width = type_width + 2
   state_width = state_width + 2
-  az_width    = az_width    + 2
-  ip_width    = ip_width    + 2
+  az_width = az_width + 2
+  ip_width = ip_width + 2
 
   local title = "EC2  Instances"
-    .. "   [region: " .. st.region .. "]"
+    .. "   [region: "
+    .. st.region
+    .. "]"
     .. (st.profile and ("   [profile: " .. st.profile .. "]") or "")
     .. (st.fetching and "  [loading…]" or "")
     .. (st.filter ~= "" and ("   [filter: " .. st.filter .. "]") or "")
 
   local total = id_width + name_width + type_width + state_width + az_width + ip_width + 16
-  local sep   = string.rep("-", total)
+  local sep = string.rep("-", total)
 
-  local lines = { "", title, "", sep, hint_line(), sep,
-    pad_right("Instance ID",  id_width)
-      .. pad_right("Name",       name_width)
-      .. pad_right("Type",       type_width)
-      .. pad_right("State",      state_width)
-      .. pad_right("AZ",         az_width)
-      .. pad_right("Private IP", ip_width)
-      .. "Public IP",
+  local lines = {
+    "",
+    title,
+    "",
+    sep,
+    hint_line(),
+    sep,
+    pad_right("Instance ID", id_width) .. pad_right("Name", name_width) .. pad_right("Type", type_width) .. pad_right(
+      "State",
+      state_width
+    ) .. pad_right("AZ", az_width) .. pad_right("Private IP", ip_width) .. "Public IP",
     sep,
   }
 
   st.line_map = {}
 
   for _, inst in ipairs(st.items) do
-    local id    = inst.InstanceId or ""
-    local nm    = name_tag(inst.Tags, "")
+    local id = inst.InstanceId or ""
+    local nm = name_tag(inst.Tags, "")
     local itype = inst.InstanceType or "—"
     local state = instance_state(inst)
-    local az    = (type(inst.Placement) == "table" and inst.Placement.AvailabilityZone) or "—"
-    local ip    = inst.PrivateIpAddress or "—"
-    local pub   = inst.PublicIpAddress  or "—"
+    local az = (type(inst.Placement) == "table" and inst.Placement.AvailabilityZone) or "—"
+    local ip = inst.PrivateIpAddress or "—"
+    local pub = inst.PublicIpAddress or "—"
 
     local display_name = nm ~= "" and nm or id
     local matches = st.filter == ""
@@ -182,14 +217,15 @@ local function render(buf, st)
       or id:lower():find(st.filter:lower(), 1, true)
 
     if matches then
-      table.insert(lines,
-        pad_right(id,                                        id_width)
-        .. pad_right(truncate(nm, name_width - 2),          name_width)
-        .. pad_right(itype,                                  type_width)
-        .. pad_right(state,                                  state_width)
-        .. pad_right(az,                                     az_width)
-        .. pad_right(ip,                                     ip_width)
-        .. pub
+      table.insert(
+        lines,
+        pad_right(id, id_width)
+          .. pad_right(truncate(nm, name_width - 2), name_width)
+          .. pad_right(itype, type_width)
+          .. pad_right(state, state_width)
+          .. pad_right(az, az_width)
+          .. pad_right(ip, ip_width)
+          .. pub
       )
       st.line_map[#lines] = id
     end
@@ -211,7 +247,7 @@ end
 ---@param call_opts AwsCallOpts|nil
 local function fetch(buf, st, call_opts)
   buf_mod.set_loading(buf)
-  st.fetching  = true
+  st.fetching = true
   st.fetch_gen = st.fetch_gen + 1
   local my_gen = st.fetch_gen
   local all_instances = {}
@@ -222,7 +258,9 @@ local function fetch(buf, st, call_opts)
       vim.list_extend(args, { "--next-token", next_token })
     end
     spawn.run(args, function(ok, lines)
-      if my_gen ~= st.fetch_gen then return end
+      if my_gen ~= st.fetch_gen then
+        return
+      end
       if not ok then
         st.fetching = false
         buf_mod.set_error(buf, lines)
@@ -256,15 +294,17 @@ local function fetch(buf, st, call_opts)
             local order = { running = 0, stopped = 1, terminated = 2 }
             local oa = order[sa] or 3
             local ob = order[sb] or 3
-            if oa ~= ob then return oa < ob end
+            if oa ~= ob then
+              return oa < ob
+            end
           end
           local na = name_tag(a.Tags, a.InstanceId or "")
           local nb = name_tag(b.Tags, b.InstanceId or "")
           return na:lower() < nb:lower()
         end)
         st.fetching = false
-        st.items    = all_instances
-        st.cache    = all_instances
+        st.items = all_instances
+        st.cache = all_instances
         render(buf, st)
       end
     end, call_opts)
@@ -296,14 +336,14 @@ function M.open(call_opts)
 
   if not _state[identity] then
     _state[identity] = {
-      items     = {},
-      filter    = "",
-      line_map  = {},
-      cache     = nil,
-      fetching  = false,
+      items = {},
+      filter = "",
+      line_map = {},
+      cache = nil,
+      fetching = false,
       fetch_gen = 0,
-      region    = config.resolve_region(call_opts),
-      profile   = config.resolve_profile(call_opts),
+      region = config.resolve_region(call_opts),
+      profile = config.resolve_profile(call_opts),
     }
   end
   local st = _state[identity]
@@ -320,7 +360,9 @@ function M.open(call_opts)
 
     filter = function()
       vim.ui.input({ prompt = "Filter instances (name/id): ", default = st.filter }, function(input)
-        if input == nil then return end
+        if input == nil then
+          return
+        end
         st.filter = input
         if input == "" then
           if st.cache then
@@ -330,7 +372,9 @@ function M.open(call_opts)
             fetch(buf, st, call_opts)
           end
         else
-          if st.cache then st.items = st.cache end
+          if st.cache then
+            st.items = st.cache
+          end
           render(buf, st)
         end
       end)

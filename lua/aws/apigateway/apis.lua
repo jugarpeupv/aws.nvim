@@ -1,10 +1,10 @@
 --- aws.nvim – API Gateway REST APIs list, filter, and render
 local M = {}
 
-local spawn   = require("aws.spawn")
+local spawn = require("aws.spawn")
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local FILETYPE = "aws-apigateway"
 
@@ -19,7 +19,7 @@ local FILETYPE = "aws-apigateway"
 ---@field profile    string|nil
 
 --- State keyed by identity string (e.g. "us-east-1" or "prod@eu-west-1")
-local _state = {}  -- identity -> AgwApisState
+local _state = {} -- identity -> AgwApisState
 
 local function buf_name(identity)
   return "aws://apigateway/apis/" .. identity
@@ -34,7 +34,9 @@ end
 ---@return string
 local function pad_right(s, width)
   local display_len = vim.fn.strdisplaywidth(s)
-  if display_len >= width then return s end
+  if display_len >= width then
+    return s
+  end
   return s .. string.rep(" ", width - display_len)
 end
 
@@ -42,7 +44,9 @@ end
 ---@param value number|string|nil
 ---@return string
 local function fmt_date(value)
-  if not value then return "—" end
+  if not value then
+    return "—"
+  end
   if type(value) == "number" then
     return os.date("%Y-%m-%dT%H:%M:%S", math.floor(value))
   end
@@ -55,17 +59,27 @@ end
 local function fmt_endpoint_type(item)
   local ec = type(item.endpointConfiguration) == "table" and item.endpointConfiguration or {}
   local types = type(ec.types) == "table" and ec.types or {}
-  if #types > 0 then return types[1] end
+  if #types > 0 then
+    return types[1]
+  end
   return "—"
 end
 
 local function hint_line()
   local km = config.values.keymaps.apigateway
   local hints = {}
-  if km.open_detail  then table.insert(hints, km.open_detail  .. " detail")  end
-  if km.filter       then table.insert(hints, km.filter       .. " filter")  end
-  if km.clear_filter then table.insert(hints, km.clear_filter .. " clear")   end
-  if km.refresh      then table.insert(hints, km.refresh      .. " refresh") end
+  if km.open_detail then
+    table.insert(hints, km.open_detail .. " detail")
+  end
+  if km.filter then
+    table.insert(hints, km.filter .. " filter")
+  end
+  if km.clear_filter then
+    table.insert(hints, km.clear_filter .. " clear")
+  end
+  if km.refresh then
+    table.insert(hints, km.refresh .. " refresh")
+  end
   return table.concat(hints, "  |  ")
 end
 
@@ -76,15 +90,19 @@ end
 ---@return string[]
 local function make_header(id_width, name_width, endpoint_width, date_width)
   local total = id_width + name_width + endpoint_width + date_width + 36
-  local sep   = string.rep("-", total)
+  local sep = string.rep("-", total)
   return {
     sep,
     hint_line(),
     sep,
-    pad_right("ID",            id_width)       .. "  "
-      .. pad_right("Name",     name_width)     .. "  "
-      .. pad_right("Endpoint", endpoint_width) .. "  "
-      .. pad_right("Created",  date_width)     .. "  "
+    pad_right("ID", id_width)
+      .. "  "
+      .. pad_right("Name", name_width)
+      .. "  "
+      .. pad_right("Endpoint", endpoint_width)
+      .. "  "
+      .. pad_right("Created", date_width)
+      .. "  "
       .. "Description",
     string.rep("-", total),
   }
@@ -93,36 +111,45 @@ end
 ---@param buf integer
 ---@param st  AgwApisState
 local function render(buf, st)
-  local id_width       = 2    -- "ID"
-  local name_width     = 4    -- "Name"
-  local endpoint_width = 8    -- "Endpoint"
-  local date_width     = 25   -- "YYYY-MM-DDTHH:MM:SS+HH:MM"
+  local id_width = 2 -- "ID"
+  local name_width = 4 -- "Name"
+  local endpoint_width = 8 -- "Endpoint"
+  local date_width = 25 -- "YYYY-MM-DDTHH:MM:SS+HH:MM"
 
   -- First pass: measure column widths for visible rows
   for _, item in ipairs(st.items) do
-    local id   = item.id   or ""
+    local id = item.id or ""
     local name = item.name or ""
-    if st.filter == "" or id:lower():find(st.filter:lower(), 1, true)
-      or name:lower():find(st.filter:lower(), 1, true) then
+    if
+      st.filter == ""
+      or id:lower():find(st.filter:lower(), 1, true)
+      or name:lower():find(st.filter:lower(), 1, true)
+    then
       local iw = vim.fn.strdisplaywidth(id)
       local nw = vim.fn.strdisplaywidth(name)
-      if iw > id_width   then id_width   = iw end
-      if nw > name_width then name_width = nw end
+      if iw > id_width then
+        id_width = iw
+      end
+      if nw > name_width then
+        name_width = nw
+      end
     end
   end
-  id_width       = id_width   + 2
-  name_width     = name_width + 2
+  id_width = id_width + 2
+  name_width = name_width + 2
   endpoint_width = endpoint_width + 2
-  date_width     = date_width + 2
+  date_width = date_width + 2
 
   local title = "API Gateway  REST APIs"
-    .. "   [region: " .. st.region .. "]"
+    .. "   [region: "
+    .. st.region
+    .. "]"
     .. (st.profile and ("   [profile: " .. st.profile .. "]") or "")
     .. (st.fetching and "  [loading…]" or "")
     .. (st.filter ~= "" and ("   [filter: " .. st.filter .. "]") or "")
 
   local header = make_header(id_width, name_width, endpoint_width, date_width)
-  local lines  = { "", title, "" }
+  local lines = { "", title, "" }
   for _, h in ipairs(header) do
     table.insert(lines, h)
   end
@@ -130,20 +157,28 @@ local function render(buf, st)
   st.line_map = {}
 
   for _, item in ipairs(st.items) do
-    local id       = item.id or ""
-    local name     = item.name or ""
+    local id = item.id or ""
+    local name = item.name or ""
     local endpoint = fmt_endpoint_type(item)
-    local created  = fmt_date(item.createdDate)
-    local desc     = item.description or "—"
+    local created = fmt_date(item.createdDate)
+    local desc = item.description or "—"
 
-    if st.filter == "" or id:lower():find(st.filter:lower(), 1, true)
-      or name:lower():find(st.filter:lower(), 1, true) then
-      table.insert(lines,
-        pad_right(id,       id_width)       .. "  "
-        .. pad_right(name,  name_width)     .. "  "
-        .. pad_right(endpoint, endpoint_width) .. "  "
-        .. pad_right(created,  date_width)  .. "  "
-        .. desc
+    if
+      st.filter == ""
+      or id:lower():find(st.filter:lower(), 1, true)
+      or name:lower():find(st.filter:lower(), 1, true)
+    then
+      table.insert(
+        lines,
+        pad_right(id, id_width)
+          .. "  "
+          .. pad_right(name, name_width)
+          .. "  "
+          .. pad_right(endpoint, endpoint_width)
+          .. "  "
+          .. pad_right(created, date_width)
+          .. "  "
+          .. desc
       )
       st.line_map[#lines] = id
     end
@@ -162,7 +197,7 @@ end
 local function fetch(buf, st, call_opts)
   buf_mod.set_loading(buf)
   local all = {}
-  st.fetching  = true
+  st.fetching = true
   st.fetch_gen = st.fetch_gen + 1
   local my_gen = st.fetch_gen
 
@@ -173,7 +208,9 @@ local function fetch(buf, st, call_opts)
     end
 
     spawn.run(args, function(ok, lines)
-      if my_gen ~= st.fetch_gen then return end
+      if my_gen ~= st.fetch_gen then
+        return
+      end
 
       if not ok then
         st.fetching = false
@@ -196,7 +233,7 @@ local function fetch(buf, st, call_opts)
 
       local next_pos = type(data.position) == "string" and data.position or nil
       st.fetching = next_pos ~= nil
-      st.items    = all
+      st.items = all
       render(buf, st)
 
       if next_pos then
@@ -235,14 +272,14 @@ function M.open(call_opts)
 
   if not _state[identity] then
     _state[identity] = {
-      items     = {},
-      filter    = "",
-      line_map  = {},
-      cache     = nil,
-      fetching  = false,
+      items = {},
+      filter = "",
+      line_map = {},
+      cache = nil,
+      fetching = false,
       fetch_gen = 0,
-      region    = config.resolve_region(call_opts),
-      profile   = config.resolve_profile(call_opts),
+      region = config.resolve_region(call_opts),
+      profile = config.resolve_profile(call_opts),
     }
   end
   local st = _state[identity]
@@ -259,7 +296,9 @@ function M.open(call_opts)
 
     filter = function()
       vim.ui.input({ prompt = "Filter REST APIs: ", default = st.filter }, function(input)
-        if input == nil then return end
+        if input == nil then
+          return
+        end
         st.filter = input
         if input == "" then
           if st.cache then

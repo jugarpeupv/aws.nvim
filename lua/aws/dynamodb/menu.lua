@@ -5,11 +5,11 @@ local M = {}
 
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local FILETYPE = "aws-dynamodb"
 
-local _bufs = {}  -- table_name -> bufnr
+local _bufs = {} -- luacheck: ignore 241
 
 local function buf_name(table_name)
   return "aws://dynamodb/menu/" .. table_name
@@ -17,22 +17,24 @@ end
 
 local ENTRIES = {
   { key = "detail", label = "General / Indexes", desc = "Schema, throughput, GSIs, LSIs, streams, tags" },
-  { key = "scan",   label = "Scan / Query",       desc = "Scan or query items with optional filter expression" },
+  { key = "scan", label = "Scan / Query", desc = "Scan or query items with optional filter expression" },
 }
 
 local function render(buf, table_name, call_opts)
-  local region  = config.resolve_region(call_opts)
+  local region = config.resolve_region(call_opts)
   local profile = config.resolve_profile(call_opts)
 
-  local title = "DynamoDB:  " .. table_name
-    .. "   [region: " .. region .. "]"
+  local title = "DynamoDB:  "
+    .. table_name
+    .. "   [region: "
+    .. region
+    .. "]"
     .. (profile and ("   [profile: " .. profile .. "]") or "")
 
-  local km   = config.values.keymaps.dynamodb
-  local hint = (km.menu_open or "<CR>") .. " open"
-    .. "  |  " .. (km.menu_refresh or "R") .. " refresh"
+  local km = config.values.keymaps.dynamodb
+  local hint = (km.menu_open or "<CR>") .. " open" .. "  |  " .. (km.menu_refresh or "R") .. " refresh"
 
-  local sep   = string.rep("-", 72)
+  local sep = string.rep("-", 72)
   local lines = { "", title, "", sep, hint, sep, "" }
 
   for i, e in ipairs(ENTRIES) do

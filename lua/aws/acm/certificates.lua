@@ -1,10 +1,10 @@
 --- aws.nvim – ACM certificates list, filter, and render
 local M = {}
 
-local spawn   = require("aws.spawn")
+local spawn = require("aws.spawn")
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local FILETYPE = "aws-acm"
 
@@ -19,7 +19,7 @@ local FILETYPE = "aws-acm"
 ---@field profile   string|nil
 
 --- state keyed by identity string (e.g. "us-east-1" or "prod@eu-west-1")
-local _state = {}  -- identity -> AcmCertState
+local _state = {} -- identity -> AcmCertState
 
 local function buf_name(identity)
   return "aws://acm/certificates/" .. identity
@@ -34,7 +34,9 @@ end
 ---@return string
 local function pad_right(s, width)
   local len = #s
-  if len >= width then return s end
+  if len >= width then
+    return s
+  end
   return s .. string.rep(" ", width - len)
 end
 
@@ -61,7 +63,9 @@ end
 ---@param value number|string|nil
 ---@return string
 local function fmt_epoch(value)
-  if not value then return "—" end
+  if not value then
+    return "—"
+  end
   local t = type(value)
   if t == "number" then
     return os.date("%Y-%m-%d", math.floor(value))
@@ -76,11 +80,21 @@ end
 local function hint_line()
   local km = config.values.keymaps.acm
   local hints = {}
-  if km.open_detail  then table.insert(hints, km.open_detail  .. " detail")   end
-  if km.delete       then table.insert(hints, km.delete       .. " delete")   end
-  if km.filter       then table.insert(hints, km.filter       .. " filter")   end
-  if km.clear_filter then table.insert(hints, km.clear_filter .. " clear")    end
-  if km.refresh      then table.insert(hints, km.refresh      .. " refresh")  end
+  if km.open_detail then
+    table.insert(hints, km.open_detail .. " detail")
+  end
+  if km.delete then
+    table.insert(hints, km.delete .. " delete")
+  end
+  if km.filter then
+    table.insert(hints, km.filter .. " filter")
+  end
+  if km.clear_filter then
+    table.insert(hints, km.clear_filter .. " clear")
+  end
+  if km.refresh then
+    table.insert(hints, km.refresh .. " refresh")
+  end
   return table.concat(hints, "  |  ")
 end
 
@@ -90,15 +104,15 @@ end
 ---@return string[]
 local function make_header(domain_width, status_width, type_width)
   local total = domain_width + status_width + type_width + 15
-  local sep   = string.rep("-", total)
+  local sep = string.rep("-", total)
   return {
     sep,
     hint_line(),
     sep,
-    pad_right("Domain", domain_width) .. "  "
-      .. pad_right("Status", status_width) .. "  "
-      .. pad_right("Type", type_width) .. "  "
-      .. "Expiry",
+    pad_right("Domain", domain_width) .. "  " .. pad_right("Status", status_width) .. "  " .. pad_right(
+      "Type",
+      type_width
+    ) .. "  " .. "Expiry",
     string.rep("-", total),
   }
 end
@@ -106,26 +120,34 @@ end
 ---@param buf integer
 ---@param st  AcmCertState
 local function render(buf, st)
-  local domain_width = 6   -- len("Domain")
-  local status_width = 6   -- len("Status")
-  local type_width   = 4   -- len("Type")
+  local domain_width = 6 -- len("Domain")
+  local status_width = 6 -- len("Status")
+  local type_width = 4 -- len("Type")
 
   for _, c in ipairs(st.certs) do
     local domain = c.DomainName or ""
     local status = (status_icon(c.Status) .. " " .. (c.Status or ""))
-    local ctype  = c.Type or ""
+    local ctype = c.Type or ""
     if st.filter == "" or domain:lower():find(st.filter:lower(), 1, true) then
-      if #domain > domain_width then domain_width = #domain end
-      if #status > status_width then status_width = #status end
-      if #ctype  > type_width   then type_width   = #ctype  end
+      if #domain > domain_width then
+        domain_width = #domain
+      end
+      if #status > status_width then
+        status_width = #status
+      end
+      if #ctype > type_width then
+        type_width = #ctype
+      end
     end
   end
   domain_width = domain_width + 2
   status_width = status_width + 2
-  type_width   = type_width   + 2
+  type_width = type_width + 2
 
   local title = "ACM Certificates"
-    .. "   [region: " .. st.region .. "]"
+    .. "   [region: "
+    .. st.region
+    .. "]"
     .. (st.profile and ("   [profile: " .. st.profile .. "]") or "")
     .. (st.fetching and "  [loading…]" or "")
     .. (st.filter ~= "" and ("   [filter: " .. st.filter .. "]") or "")
@@ -141,14 +163,18 @@ local function render(buf, st)
   for _, c in ipairs(st.certs) do
     local domain = c.DomainName or ""
     local status = status_icon(c.Status) .. " " .. (c.Status or "—")
-    local ctype  = c.Type or "—"
+    local ctype = c.Type or "—"
     local expiry = fmt_epoch(c.NotAfter)
     if st.filter == "" or domain:lower():find(st.filter:lower(), 1, true) then
-      table.insert(lines,
-        pad_right(domain, domain_width) .. "  "
-        .. pad_right(status, status_width) .. "  "
-        .. pad_right(ctype,  type_width)  .. "  "
-        .. expiry
+      table.insert(
+        lines,
+        pad_right(domain, domain_width)
+          .. "  "
+          .. pad_right(status, status_width)
+          .. "  "
+          .. pad_right(ctype, type_width)
+          .. "  "
+          .. expiry
       )
       st.line_map[#lines] = { arn = c.CertificateArn, domain = domain }
     end
@@ -167,24 +193,33 @@ end
 local function fetch(buf, st, call_opts)
   buf_mod.set_loading(buf)
   local all = {}
-  st.fetching  = true
+  st.fetching = true
   st.fetch_gen = st.fetch_gen + 1
   local my_gen = st.fetch_gen
 
   local function fetch_page(next_token)
     local args = {
-      "acm", "list-certificates",
+      "acm",
+      "list-certificates",
       "--certificate-statuses",
-        "PENDING_VALIDATION", "ISSUED", "INACTIVE",
-        "EXPIRED", "VALIDATION_TIMED_OUT", "REVOKED", "FAILED",
-      "--output", "json",
+      "PENDING_VALIDATION",
+      "ISSUED",
+      "INACTIVE",
+      "EXPIRED",
+      "VALIDATION_TIMED_OUT",
+      "REVOKED",
+      "FAILED",
+      "--output",
+      "json",
     }
     if next_token then
       vim.list_extend(args, { "--next-token", next_token })
     end
 
     spawn.run(args, function(ok, lines)
-      if my_gen ~= st.fetch_gen then return end
+      if my_gen ~= st.fetch_gen then
+        return
+      end
 
       if not ok then
         st.fetching = false
@@ -200,21 +235,20 @@ local function fetch(buf, st, call_opts)
         return
       end
 
-      local list = type(data.CertificateSummaryList) == "table"
-        and data.CertificateSummaryList or {}
+      local list = type(data.CertificateSummaryList) == "table" and data.CertificateSummaryList or {}
       for _, c in ipairs(list) do
         table.insert(all, {
           CertificateArn = c.CertificateArn,
-          DomainName     = c.DomainName,
-          Status         = c.Status,
-          Type           = c.Type,
-          NotAfter       = c.NotAfter,
+          DomainName = c.DomainName,
+          Status = c.Status,
+          Type = c.Type,
+          NotAfter = c.NotAfter,
         })
       end
 
       local has_more = type(data.NextToken) == "string"
       st.fetching = has_more
-      st.certs    = all
+      st.certs = all
       render(buf, st)
 
       if has_more then
@@ -244,7 +278,7 @@ end
 ---@return {arn:string,domain:string}[]
 local function entries_in_range(st, r1, r2)
   local entries = {}
-  local seen    = {}
+  local seen = {}
   for row = r1, r2 do
     local e = st.line_map[row]
     if e and not seen[e.arn] then
@@ -269,7 +303,9 @@ local function remove_from_state(st, arns, buf)
     return out
   end
   st.certs = filter_list(st.certs)
-  if st.cache then st.cache = filter_list(st.cache) end
+  if st.cache then
+    st.cache = filter_list(st.cache)
+  end
   render(buf, st)
 end
 
@@ -285,14 +321,14 @@ function M.open(call_opts)
 
   if not _state[identity] then
     _state[identity] = {
-      certs     = {},
-      filter    = "",
-      line_map  = {},
-      cache     = nil,
-      fetching  = false,
+      certs = {},
+      filter = "",
+      line_map = {},
+      cache = nil,
+      fetching = false,
       fetch_gen = 0,
-      region    = config.resolve_region(call_opts),
-      profile   = config.resolve_profile(call_opts),
+      region = config.resolve_region(call_opts),
+      profile = config.resolve_profile(call_opts),
     }
   end
   local st = _state[identity]
@@ -314,30 +350,27 @@ function M.open(call_opts)
       vim.notify("aws.nvim: no certificates in selection", vim.log.levels.WARN)
       return
     end
-    local label = #entries == 1
-      and ("Yes, delete " .. entries[1].domain)
-      or  ("Yes, delete " .. #entries .. " certificates")
-    vim.ui.select(
-      { label, "Cancel" },
-      { prompt = "Delete ACM certificates?" },
-      function(_, idx)
-        if not idx or idx ~= 1 then return end
-        local del = require("aws.acm.delete")
-        local removed = {}
-        local function next_delete(i)
-          if i > #entries then
-            remove_from_state(st, removed, buf)
-            return
-          end
-          local e = entries[i]
-          del.run(e.arn, function()
-            removed[e.arn] = true
-            next_delete(i + 1)
-          end, call_opts)
-        end
-        next_delete(1)
+    local label = #entries == 1 and ("Yes, delete " .. entries[1].domain)
+      or ("Yes, delete " .. #entries .. " certificates")
+    vim.ui.select({ label, "Cancel" }, { prompt = "Delete ACM certificates?" }, function(_, idx)
+      if not idx or idx ~= 1 then
+        return
       end
-    )
+      local del = require("aws.acm.delete")
+      local removed = {}
+      local function next_delete(i)
+        if i > #entries then
+          remove_from_state(st, removed, buf)
+          return
+        end
+        local e = entries[i]
+        del.run(e.arn, function()
+          removed[e.arn] = true
+          next_delete(i + 1)
+        end, call_opts)
+      end
+      next_delete(1)
+    end)
   end
 
   keymaps.apply_acm(buf, {
@@ -350,12 +383,14 @@ function M.open(call_opts)
       require("aws.acm.detail").open(e.arn, call_opts)
     end,
 
-    delete        = delete_one,
+    delete = delete_one,
     delete_visual = delete_visual,
 
     filter = function()
       vim.ui.input({ prompt = "Filter certificates: ", default = st.filter }, function(input)
-        if input == nil then return end
+        if input == nil then
+          return
+        end
         st.filter = input
         if input == "" then
           if st.cache then

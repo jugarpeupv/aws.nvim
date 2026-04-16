@@ -3,10 +3,10 @@
 ---   ec2 describe-security-groups --group-ids <id>
 local M = {}
 
-local spawn   = require("aws.spawn")
+local spawn = require("aws.spawn")
 local buf_mod = require("aws.buffer")
 local keymaps = require("aws.keymaps")
-local config  = require("aws.config")
+local config = require("aws.config")
 
 local FILETYPE = "aws-vpc"
 
@@ -30,8 +30,8 @@ local function fmt_rule(perm)
   local proto = perm.IpProtocol or "?"
   local port_str
   if proto == "-1" then
-    proto     = "All"
-    port_str  = "All"
+    proto = "All"
+    port_str = "All"
   elseif perm.FromPort ~= nil then
     if perm.FromPort == perm.ToPort then
       port_str = tostring(perm.FromPort)
@@ -94,11 +94,13 @@ end
 
 local function render(buf, sg_id)
   local st = _state[sg_id]
-  if not st then return end
+  if not st then
+    return
+  end
 
-  local km   = config.values.keymaps.vpc
+  local km = config.values.keymaps.vpc
   local hint = (km.detail_refresh or "R") .. " refresh"
-  local sep  = string.rep("-", 72)
+  local sep = string.rep("-", 72)
 
   local title = sg_id
   if st.sg then
@@ -111,14 +113,16 @@ local function render(buf, sg_id)
   local lines = { "", "Security Group:  " .. title, "", sep, hint, sep }
 
   -- ── General ────────────────────────────────────────────────────────────────
-  for _, l in ipairs(section("General")) do table.insert(lines, l) end
+  for _, l in ipairs(section("General")) do
+    table.insert(lines, l)
+  end
   if st.sg then
     local sg = st.sg
-    table.insert(lines, kv("Group ID",    sg.GroupId))
-    table.insert(lines, kv("Name",        sg.GroupName))
+    table.insert(lines, kv("Group ID", sg.GroupId))
+    table.insert(lines, kv("Name", sg.GroupName))
     table.insert(lines, kv("Description", sg.Description))
-    table.insert(lines, kv("VPC ID",      sg.VpcId))
-    table.insert(lines, kv("Owner ID",    sg.OwnerId))
+    table.insert(lines, kv("VPC ID", sg.VpcId))
+    table.insert(lines, kv("Owner ID", sg.OwnerId))
   elseif st.sg == false then
     table.insert(lines, "  (error)")
   else
@@ -126,14 +130,18 @@ local function render(buf, sg_id)
   end
 
   -- ── Tags ───────────────────────────────────────────────────────────────────
-  for _, l in ipairs(section("Tags")) do table.insert(lines, l) end
+  for _, l in ipairs(section("Tags")) do
+    table.insert(lines, l)
+  end
   if st.sg then
     local tags = st.sg.Tags or {}
     if #tags == 0 then
       table.insert(lines, "  (none)")
     else
       local sorted = vim.deepcopy(tags)
-      table.sort(sorted, function(a, b) return (a.Key or "") < (b.Key or "") end)
+      table.sort(sorted, function(a, b)
+        return (a.Key or "") < (b.Key or "")
+      end)
       for _, t in ipairs(sorted) do
         table.insert(lines, kv(t.Key, t.Value))
       end
@@ -145,7 +153,9 @@ local function render(buf, sg_id)
   end
 
   -- ── Inbound Rules ─────────────────────────────────────────────────────────
-  for _, l in ipairs(section("Inbound Rules")) do table.insert(lines, l) end
+  for _, l in ipairs(section("Inbound Rules")) do
+    table.insert(lines, l)
+  end
   if st.sg then
     local perms = st.sg.IpPermissions or {}
     if #perms == 0 then
@@ -154,7 +164,9 @@ local function render(buf, sg_id)
       table.insert(lines, "  Proto   Port       Source / Destination")
       table.insert(lines, "  " .. string.rep("-", 60))
       for _, perm in ipairs(perms) do
-        for _, l in ipairs(fmt_rule(perm)) do table.insert(lines, l) end
+        for _, l in ipairs(fmt_rule(perm)) do
+          table.insert(lines, l)
+        end
       end
     end
   elseif st.sg == false then
@@ -164,7 +176,9 @@ local function render(buf, sg_id)
   end
 
   -- ── Outbound Rules ────────────────────────────────────────────────────────
-  for _, l in ipairs(section("Outbound Rules")) do table.insert(lines, l) end
+  for _, l in ipairs(section("Outbound Rules")) do
+    table.insert(lines, l)
+  end
   if st.sg then
     local perms = st.sg.IpPermissionsEgress or {}
     if #perms == 0 then
@@ -173,7 +187,9 @@ local function render(buf, sg_id)
       table.insert(lines, "  Proto   Port       Source / Destination")
       table.insert(lines, "  " .. string.rep("-", 60))
       for _, perm in ipairs(perms) do
-        for _, l in ipairs(fmt_rule(perm)) do table.insert(lines, l) end
+        for _, l in ipairs(fmt_rule(perm)) do
+          table.insert(lines, l)
+        end
       end
     end
   elseif st.sg == false then
@@ -191,19 +207,16 @@ local function fetch(sg_id, buf, call_opts)
   _state[sg_id] = { sg = nil }
   local st = _state[sg_id]
 
-  spawn.run(
-    { "ec2", "describe-security-groups", "--group-ids", sg_id, "--output", "json" },
-    function(ok, out)
-      if ok then
-        local ok2, data = pcall(vim.json.decode, table.concat(out, "\n"))
-        st.sg = (ok2 and type(data) == "table"
-          and type(data.SecurityGroups) == "table"
-          and data.SecurityGroups[1]) or false
-      else
-        st.sg = false
-      end
-      render(buf, sg_id)
-    end, call_opts)
+  spawn.run({ "ec2", "describe-security-groups", "--group-ids", sg_id, "--output", "json" }, function(ok, out)
+    if ok then
+      local ok2, data = pcall(vim.json.decode, table.concat(out, "\n"))
+      st.sg = (ok2 and type(data) == "table" and type(data.SecurityGroups) == "table" and data.SecurityGroups[1])
+        or false
+    else
+      st.sg = false
+    end
+    render(buf, sg_id)
+  end, call_opts)
 end
 
 ---@param sg_id     string
@@ -212,7 +225,9 @@ function M.open(sg_id, call_opts)
   local buf = buf_mod.get_or_create(buf_name(sg_id), FILETYPE)
   buf_mod.open_vsplit(buf)
   keymaps.apply_vpc_detail(buf, {
-    refresh = function() fetch(sg_id, buf, call_opts) end,
+    refresh = function()
+      fetch(sg_id, buf, call_opts)
+    end,
   })
   fetch(sg_id, buf, call_opts)
 end
