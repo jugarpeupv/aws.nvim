@@ -61,6 +61,9 @@ local function hint_line()
   if km.open_logs then
     table.insert(hints, km.open_logs .. " logs")
   end
+  if km.open_browser then
+    table.insert(hints, km.open_browser .. " browser")
+  end
   if km.delete then
     table.insert(hints, km.delete .. " delete")
   end
@@ -353,6 +356,22 @@ function M.open(call_opts)
       end
       local log_group = "/aws/lambda/" .. name
       require("aws.cloudwatch.streams").open(log_group, call_opts)
+    end,
+
+    open_browser = function()
+      local name = fn_under_cursor(st)
+      if not name then
+        vim.notify("aws.nvim: no function under cursor", vim.log.levels.WARN)
+        return
+      end
+      local region = config.resolve_region(call_opts)
+      local url = "https://"
+        .. region
+        .. ".console.aws.amazon.com/lambda/home?region="
+        .. region
+        .. "#/functions/"
+        .. name
+      vim.ui.open(url)
     end,
 
     delete = delete_one,

@@ -13,7 +13,7 @@ local function buf_name(fn_name)
 end
 
 -- Per-buffer state keyed by function name
-local _state = {} -- fn_name -> { data, region, profile }
+local _state = {} -- fn_name -> { data, code, region, profile }
 
 -------------------------------------------------------------------------------
 -- Helpers
@@ -74,6 +74,7 @@ local function render(buf, fn_name)
   end
 
   local d = st.data
+  local code = st.code or {}
   local region = st.region
   local profile = st.profile
   local km = config.values.keymaps.lambda
@@ -95,6 +96,9 @@ local function render(buf, fn_name)
   local hints = {}
   if km.detail_logs then
     table.insert(hints, km.detail_logs .. " open logs")
+  end
+  if km.open_browser then
+    table.insert(hints, km.open_browser .. " open in browser")
   end
   if km.refresh then
     table.insert(hints, km.refresh .. " refresh")
@@ -137,6 +141,20 @@ local function render(buf, fn_name)
     row("VPC", d.VpcConfig.VpcId)
   end
 
+  -- Container image section (only for PackageType = Image)
+  if d.PackageType == "Image" then
+    table.insert(lines, "")
+    table.insert(lines, "Container Image")
+    table.insert(lines, string.rep("-", sep_len))
+    local img_uri = (code.ImageUri and code.ImageUri ~= vim.NIL) and code.ImageUri or "—"
+    local resolved = (code.ResolvedImageUri and code.ResolvedImageUri ~= vim.NIL) and code.ResolvedImageUri or "—"
+    table.insert(lines, "  " .. pad_right("Image URI", 16) .. img_uri)
+    table.insert(lines, "  " .. pad_right("Resolved URI", 16) .. resolved)
+    if type(d.Architectures) == "table" and #d.Architectures > 0 then
+      table.insert(lines, "  " .. pad_right("Architecture", 16) .. table.concat(d.Architectures, ", "))
+    end
+  end
+
   -- Environment variables
   if type(d.Environment) == "table" and type(d.Environment.Variables) == "table" and next(d.Environment.Variables) then
     table.insert(lines, "")
@@ -177,9 +195,10 @@ end
 local function fetch(fn_name, buf, call_opts)
   buf_mod.set_loading(buf)
 
+  -- get-function returns Configuration + Code (image URIs) in one call
   spawn.run({
     "lambda",
-    "get-function-configuration",
+    "get-function",
     "--function-name",
     fn_name,
     "--output",
@@ -197,8 +216,13 @@ local function fetch(fn_name, buf, call_opts)
       return
     end
 
+    -- get-function nests config under "Configuration" and image info under "Code"
+    local cfg = type(data.Configuration) == "table" and data.Configuration or data
+    local code = type(data.Code) == "table" and data.Code or {}
+
     _state[fn_name] = {
-      data = data,
+      data = cfg,
+      code = code,
       region = config.resolve_region(call_opts),
       profile = config.resolve_profile(call_opts),
     }
@@ -220,6 +244,17 @@ function M.open(fn_name, call_opts)
     open_logs = function()
       local log_group = "/aws/lambda/" .. fn_name
       require("aws.cloudwatch.streams").open(log_group, call_opts)
+    end,
+
+    open_browser = function()
+      local region = config.resolve_region(call_opts)
+      local url = "https://"
+        .. region
+        .. ".console.aws.amazon.com/lambda/home?region="
+        .. region
+        .. "#/functions/"
+        .. fn_name
+      vim.ui.open(url)
     end,
 
     refresh = function()

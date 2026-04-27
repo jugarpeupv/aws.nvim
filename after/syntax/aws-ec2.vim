@@ -1,8 +1,6 @@
 " aws.nvim – syntax highlighting for the aws-ec2 filetype
 syntax clear
 
-" Stop regex matching past column 200 to avoid lag
-setlocal synmaxcol=200
 
 " ── Separators ───────────────────────────────────────────────────────────────
 syntax match AwsEc2Sep         /^-\+$/

@@ -1,8 +1,6 @@
 " aws.nvim – syntax highlighting for the aws-secretsmanager filetype
 syntax clear
 
-" Stop regex matching past column 120 to avoid lag when holding j/k
-setlocal synmaxcol=120
 
 " ── Separators ───────────────────────────────────────────────────────────────
 syntax match AwsSmSep         /^-\+$/

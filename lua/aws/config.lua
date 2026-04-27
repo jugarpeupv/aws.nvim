@@ -39,6 +39,7 @@ local M = {}
 --- Set any key to false to disable it.
 ---@field open_detail  string|false  open detail view for function under cursor
 ---@field open_logs    string|false  open CloudWatch log streams for function under cursor
+---@field open_browser string|false  open function in the AWS console browser
 ---@field delete       string|false  delete function under cursor
 ---@field filter       string|false  prompt to filter functions by name
 ---@field clear_filter string|false  clear active filter
@@ -218,6 +219,7 @@ local defaults = {
     lambda = {
       open_detail = "<CR>",
       open_logs = "L",
+      open_browser = "<C-b>",
       delete = "dd",
       filter = "F",
       clear_filter = "C",

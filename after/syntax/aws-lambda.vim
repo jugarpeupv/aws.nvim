@@ -1,8 +1,6 @@
 " aws.nvim – syntax highlighting for the aws-lambda filetype
 syntax clear
 
-" Stop regex matching past column 120 to avoid lag when holding j/k
-setlocal synmaxcol=120
 
 " ── Separators ───────────────────────────────────────────────────────────────
 syntax match AwsLambdaSep       /^-\+$/
@@ -22,6 +20,7 @@ syntax match AwsLambdaBadge     /\[profile:[^\]]*\]/
 " ── Column headers ───────────────────────────────────────────────────────────
 syntax match AwsLambdaColHeader /^Name\s\+Runtime.*/
 syntax match AwsLambdaColHeader /^Configuration$/
+syntax match AwsLambdaColHeader /^Container Image$/
 syntax match AwsLambdaColHeader /^Environment Variables$/
 syntax match AwsLambdaColHeader /^Layers$/
 syntax match AwsLambdaColHeader /^CloudWatch Logs$/
@@ -42,6 +41,9 @@ syntax match AwsLambdaLogGroup  /\/aws\/lambda\/[^ ]*/
 " ── ARN ──────────────────────────────────────────────────────────────────────
 syntax match AwsLambdaArn       /arn:aws[^ ]*/
 
+" ── ECR image URI (account.dkr.ecr.region.amazonaws.com/...) ─────────────────
+syntax match AwsLambdaImageUri  /\d\{12}\.dkr\.ecr\.[^ ]*/
+
 " ── Highlight links ──────────────────────────────────────────────────────────
 highlight default link AwsLambdaSep       Comment
 highlight default link AwsLambdaTitle     Title
@@ -54,5 +56,6 @@ highlight default link AwsLambdaSize      Constant
 highlight default link AwsLambdaTimestamp Comment
 highlight default link AwsLambdaLogGroup  String
 highlight default link AwsLambdaArn       Comment
+highlight default link AwsLambdaImageUri  String
 
 let b:current_syntax = "aws-lambda"

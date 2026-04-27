@@ -146,6 +146,7 @@ function M.apply_lambda(buf, actions)
 
   map(buf, km.open_detail, actions.open_detail, "open lambda function detail")
   map(buf, km.open_logs, actions.open_logs, "open CloudWatch logs for function")
+  map(buf, km.open_browser, actions.open_browser, "open lambda function in browser")
   map(buf, km.delete, actions.delete, "delete lambda function")
   map(buf, km.filter, actions.filter, "filter functions")
   map(buf, km.clear_filter, actions.clear_filter, "clear filter")
@@ -161,6 +162,7 @@ function M.apply_lambda_detail(buf, actions)
   local km = require("aws.config").values.keymaps.lambda
 
   map(buf, km.detail_logs, actions.open_logs, "open CloudWatch logs for function")
+  map(buf, km.open_browser, actions.open_browser, "open lambda function in browser")
   map(buf, km.refresh, actions.refresh, "refresh detail")
 end
 
